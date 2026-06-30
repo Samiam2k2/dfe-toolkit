@@ -6,10 +6,10 @@
 #>
 
 Write-Host "`n📋 DFE-Toolkit Main Engine v0.1" -ForegroundColor Cyan
-Write-Host "=========================================`n" -ForegroundColor Gray
+Write-Host "==========================================" -ForegroundColor Gray
 
 # --- Información del Sistema ---
-Write-Host "💻 Información del Sistema:" -ForegroundColor Yellow
+Write-Host "`n💻 Información del Sistema:" -ForegroundColor Yellow
 
 try {
     $computerInfo = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop

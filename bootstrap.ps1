@@ -1,39 +1,59 @@
 <#
 .SYNOPSIS
-    DFE-Toolkit Bootstrap
+    DFE-Toolkit Main Engine
 .DESCRIPTION
-    Punto de entrada para la herramienta de instalación de DFE.
-    Descarga y ejecuta el script principal desde el repositorio.
+    Motor principal de la herramienta de instalación de DFE.
 #>
 
-Write-Host "🚀 DFE-Toolkit v0.1" -ForegroundColor Cyan
-Write-Host "================================`n" -ForegroundColor Gray
+Write-Host "`n📋 DFE-Toolkit Main Engine v0.1" -ForegroundColor Cyan
+Write-Host "==========================================" -ForegroundColor Gray
 
-# --- Configuración del repositorio ---
-$REPO_OWNER = "Samiam2k2"
-$REPO_NAME = "dfe-toolkit"
-$BRANCH = "main"
-$SCRIPT_PATH = "src/Main.ps1"
-
-# --- Construir URL ---
-$MAIN_SCRIPT_URL = "https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/$BRANCH/$SCRIPT_PATH"
-
-Write-Host "📥 Descargando el motor principal..." -ForegroundColor Cyan
-Write-Host "   Fuente: $MAIN_SCRIPT_URL" -ForegroundColor Gray
+# --- Información del Sistema ---
+Write-Host "`n💻 Información del Sistema:" -ForegroundColor Yellow
 
 try {
-    $mainScript = Invoke-RestMethod -Uri $MAIN_SCRIPT_URL -ErrorAction Stop
-    Write-Host "✅ Script descargado correctamente ($($mainScript.Length) bytes)" -ForegroundColor Green
+    $computerInfo = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop
+    $osInfo = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+    $biosInfo = Get-CimInstance -ClassName Win32_BIOS -ErrorAction SilentlyContinue
 } catch {
-    Write-Error "❌ Error al descargar el script: $_"
-    Write-Host "`n💡 Verifica que el repositorio y la ruta sean correctos." -ForegroundColor Yellow
+    Write-Error "❌ No se pudo obtener información del sistema: $_"
     exit 1
 }
 
-Write-Host "`n▶️  Ejecutando el motor principal..." -ForegroundColor Cyan
-try {
-    Invoke-Expression $mainScript
-} catch {
-    Write-Error "❌ Error al ejecutar el script: $_"
-    exit 1
+Write-Host "   Equipo: $($computerInfo.Name)" -ForegroundColor White
+Write-Host "   Modelo: $($computerInfo.Model)" -ForegroundColor White
+Write-Host "   Fabricante: $($computerInfo.Manufacturer)" -ForegroundColor White
+Write-Host "   Serial: $($biosInfo.SerialNumber)" -ForegroundColor White
+Write-Host "   SO: $($osInfo.Caption)" -ForegroundColor White
+Write-Host "   RAM Total: $([math]::Round($computerInfo.TotalPhysicalMemory / 1GB, 2)) GB" -ForegroundColor White
+
+# --- Detección de servidor DFE ---
+Write-Host "`n🔍 Verificando si es un servidor DFE..." -ForegroundColor Yellow
+
+$dfeIndicators = @(
+    @{Name="Indigo"; Path="HKLM:\SOFTWARE\Indigo"},
+    @{Name="HP DFE"; Path="HKLM:\SOFTWARE\HP\DFE"},
+    @{Name="Production Pro"; Path="HKLM:\SOFTWARE\HP\ProductionPro"},
+    @{Name="Matrix"; Path="HKLM:\SOFTWARE\Wow6432Node\Indigo\Matrix"},
+    @{Name="ProdFlow"; Path="C:\prodflow"}
+)
+
+$isDFE = $false
+$foundIndicators = @()
+
+foreach ($indicator in $dfeIndicators) {
+    if (Test-Path $indicator.Path) {
+        $isDFE = $true
+        $foundIndicators += $indicator.Name
+    }
 }
+
+if ($isDFE) {
+    Write-Host "✅ ¡ESTE ES UN SERVIDOR DFE!" -ForegroundColor Green
+    Write-Host "   Indicadores encontrados: $($foundIndicators -join ', ')" -ForegroundColor Gray
+} else {
+    Write-Host "⚠️  No se detectaron indicadores DFE" -ForegroundColor Yellow
+    Write-Host "   Este servidor NO parece ser un DFE o está sin instalar." -ForegroundColor Yellow
+}
+
+Write-Host "`n✅ Verificación completada!" -ForegroundColor Green

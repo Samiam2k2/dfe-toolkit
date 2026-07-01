@@ -82,43 +82,247 @@ function Get-StatusText {
     }
 }
 
-function Test-DFEServer {
+function Get-HardwareRequirements {
     [CmdletBinding()]
     param()
 
-    $dfeIndicators = @(
-        @{Name="Indigo"; Path="HKLM:\SOFTWARE\Indigo"},
-        @{Name="HP DFE"; Path="HKLM:\SOFTWARE\HP\DFE"},
-        @{Name="Production Pro"; Path="HKLM:\SOFTWARE\HP\ProductionPro"},
-        @{Name="Matrix"; Path="HKLM:\SOFTWARE\Wow6432Node\Indigo\Matrix"},
-        @{Name="ProdFlow"; Path="C:\prodflow"}
+    $localPath = Join-Path -Path $projectRoot -ChildPath "manifests\hardware-requirements.json"
+    if (Test-Path -Path $localPath -PathType Leaf) {
+        return Get-Content -Path $localPath -Raw | ConvertFrom-Json
+    }
+
+    try {
+        $requirementsUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/manifests/hardware-requirements.json?cacheBust=$([DateTime]::UtcNow.Ticks)"
+        return Invoke-RestMethod -Uri $requirementsUrl -Headers @{
+            "Cache-Control" = "no-cache"
+            "Pragma" = "no-cache"
+        } -ErrorAction Stop
+    }
+    catch {
+        $fallbackJson = @'
+{
+  "products": [
+    {
+      "productName": "Production Pro",
+      "version": "8.3",
+      "model": "commercial",
+      "rules": {
+        "newInstallation": {
+          "allowedHardware": [
+            {
+              "id": "hp-z8-g5-windows-10",
+              "manufacturerPatterns": [ "HP", "Hewlett-Packard" ],
+              "modelPatterns": [ "HP Z8 G5", "HP Z8 Fury G5 Workstation Desktop PC", "Z8 G5" ],
+              "requiredOperatingSystemPatterns": [ "Windows 10" ]
+            },
+            {
+              "id": "hpe-proliant-gen10-windows-server-2019",
+              "manufacturerPatterns": [ "HPE", "Hewlett Packard Enterprise", "HP" ],
+              "modelPatterns": [ "ProLiant Gen10", "DL380 Gen10", "HPE ProLiant Gen10" ],
+              "requiredOperatingSystemPatterns": [ "Windows Server 2019" ]
+            },
+            {
+              "id": "hpe-proliant-gen11-windows-server-2019",
+              "manufacturerPatterns": [ "HPE", "Hewlett Packard Enterprise", "HP" ],
+              "modelPatterns": [ "ProLiant Gen11", "DL380 Gen11", "HPE ProLiant Gen11" ],
+              "requiredOperatingSystemPatterns": [ "Windows Server 2019" ]
+            }
+          ]
+        },
+        "upgrade": {
+          "allowedHardware": [
+            {
+              "id": "hp-z8-g5-windows-10",
+              "manufacturerPatterns": [ "HP", "Hewlett-Packard" ],
+              "modelPatterns": [ "HP Z8 G5", "HP Z8 Fury G5 Workstation Desktop PC", "Z8 G5" ],
+              "requiredOperatingSystemPatterns": [ "Windows 10" ]
+            },
+            {
+              "id": "hp-z8-g4-windows-10",
+              "manufacturerPatterns": [ "HP", "Hewlett-Packard" ],
+              "modelPatterns": [ "HP Z8 G4", "Z8 G4" ],
+              "requiredOperatingSystemPatterns": [ "Windows 10" ]
+            },
+            {
+              "id": "hp-z840-windows-10",
+              "manufacturerPatterns": [ "HP", "Hewlett-Packard" ],
+              "modelPatterns": [ "HP Z840", "Z840" ],
+              "requiredOperatingSystemPatterns": [ "Windows 10" ]
+            },
+            {
+              "id": "hpe-proliant-gen10-windows-server-2019",
+              "manufacturerPatterns": [ "HPE", "Hewlett Packard Enterprise", "HP" ],
+              "modelPatterns": [ "ProLiant Gen10", "DL380 Gen10", "HPE ProLiant Gen10" ],
+              "requiredOperatingSystemPatterns": [ "Windows Server 2019" ]
+            },
+            {
+              "id": "hpe-proliant-gen9-windows-server-2019",
+              "manufacturerPatterns": [ "HPE", "Hewlett Packard Enterprise", "HP" ],
+              "modelPatterns": [ "ProLiant Gen9", "DL380 Gen9", "DL360 Gen9", "HPE ProLiant Gen9" ],
+              "requiredOperatingSystemPatterns": [ "Windows Server 2019" ]
+            },
+            {
+              "id": "hpe-proliant-gen8-windows-server-2019",
+              "manufacturerPatterns": [ "HPE", "Hewlett Packard Enterprise", "HP" ],
+              "modelPatterns": [ "ProLiant Gen8", "DL380p", "DL360p", "ML350", "HPE ProLiant Gen8" ],
+              "requiredOperatingSystemPatterns": [ "Windows Server 2019" ]
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
+'@
+        return $fallbackJson | ConvertFrom-Json
+    }
+}
+
+function Test-PatternList {
+    param(
+        [string]$Value,
+        [object[]]$Patterns
     )
 
-    Write-Output "Validacion de servidor DFE"
-    Write-Output "--------------------------"
-    Write-Output "Revisando claves de registro y rutas tipicas de DFE HP Indigo en Windows."
-    Write-Output ""
+    foreach ($pattern in @($Patterns)) {
+        if ($Value -like "*$pattern*") {
+            return $true
+        }
+    }
 
-    $foundIndicators = @()
+    return $false
+}
 
-    foreach ($indicator in $dfeIndicators) {
-        if (Test-Path -Path $indicator.Path -ErrorAction Stop) {
-            $foundIndicators += $indicator
-            Write-Output "[OK] $($indicator.Name): $($indicator.Path)"
+function Convert-RuleIdToLabel {
+    param([string]$RuleId)
+
+    $textInfo = (Get-Culture).TextInfo
+    $parts = $RuleId -split "-"
+    $hardwareParts = @()
+    $osParts = @()
+    $osStarted = $false
+
+    foreach ($part in $parts) {
+        if ($part -eq "windows") {
+            $osStarted = $true
+        }
+
+        if ($osStarted) {
+            $osParts += $part
         }
         else {
-            Write-Output "[--] $($indicator.Name): $($indicator.Path)"
+            $hardwareParts += $part
         }
     }
 
+    $hardware = ($hardwareParts | ForEach-Object {
+        switch -Regex ($_) {
+            "^hp$" { "HP"; break }
+            "^hpe$" { "HPE"; break }
+            "^z\d+" { $_.ToUpper(); break }
+            "^g\d+" { $_.ToUpper(); break }
+            "^gen\d+" { "Gen" + $_.Substring(3); break }
+            "^dl\d+" { $_.ToUpper(); break }
+            default { $textInfo.ToTitleCase($_) }
+        }
+    }) -join " "
+
+    $os = ($osParts | ForEach-Object {
+        switch -Regex ($_) {
+            "^windows$" { "Windows"; break }
+            "^server$" { "Server"; break }
+            default { $_ }
+        }
+    }) -join " "
+
+    return "$hardware + $os"
+}
+
+function Test-HardwareRule {
+    param(
+        [object]$Rule,
+        [string]$Manufacturer,
+        [string]$Model,
+        [string]$OperatingSystem
+    )
+
+    $manufacturerMatch = Test-PatternList -Value $Manufacturer -Patterns $Rule.manufacturerPatterns
+    $modelMatch = Test-PatternList -Value $Model -Patterns $Rule.modelPatterns
+    $osMatch = Test-PatternList -Value $OperatingSystem -Patterns $Rule.requiredOperatingSystemPatterns
+
+    return ($manufacturerMatch -and $modelMatch -and $osMatch)
+}
+
+function Invoke-HardwareRequirementsValidation {
+    [CmdletBinding()]
+    param()
+
+    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
+    $checkIcon = [char]::ConvertFromUtf32(0x2705)
+
+    $requirements = Get-HardwareRequirements
+    $productRules = $requirements.products | Where-Object {
+        $_.productName -eq "Production Pro" -and $_.version -eq "8.3"
+    } | Select-Object -First 1
+
+    if (-not $productRules) {
+        throw "No se encontraron reglas de hardware para Production Pro 8.3."
+    }
+
+    $computerSystem = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop
+    $operatingSystem = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+
+    $manufacturer = [string]$computerSystem.Manufacturer
+    $model = [string]$computerSystem.Model
+    $osCaption = [string]$operatingSystem.Caption
+    $matches = @()
+
+    foreach ($rule in @($productRules.rules.newInstallation.allowedHardware)) {
+        if (Test-HardwareRule -Rule $rule -Manufacturer $manufacturer -Model $model -OperatingSystem $osCaption) {
+            $matches += [pscustomobject]@{
+                Mode = "Instalacion nueva"
+                Label = Convert-RuleIdToLabel -RuleId $rule.id
+            }
+        }
+    }
+
+    foreach ($rule in @($productRules.rules.upgrade.allowedHardware)) {
+        if (Test-HardwareRule -Rule $rule -Manufacturer $manufacturer -Model $model -OperatingSystem $osCaption) {
+            $matches += [pscustomobject]@{
+                Mode = "Upgrade"
+                Label = Convert-RuleIdToLabel -RuleId $rule.id
+            }
+        }
+    }
+
+    Write-Output "Validacion real de hardware"
+    Write-Output "==========================="
+    Write-Output "Producto evaluado: Production Pro Commercial 8.3"
     Write-Output ""
-    if ($foundIndicators.Count -gt 0) {
-        $names = $foundIndicators | ForEach-Object { $_.Name }
-        Write-Output "Resultado: posible servidor DFE detectado."
-        Write-Output "Indicadores encontrados: $($names -join ', ')"
+    Write-Output "Servidor detectado:"
+    Write-Output "  Fabricante: $manufacturer"
+    Write-Output "  Modelo: $model"
+    Write-Output "  Sistema operativo: $osCaption"
+    Write-Output ""
+
+    if ($matches.Count -gt 0) {
+        Write-Output "$checkIcon Servidor compatible segun las reglas cargadas."
+        Write-Output ""
+        Write-Output "Coincidencias:"
+        foreach ($match in $matches) {
+            Write-Output "  - Coincide con $($match.Label) ($($match.Mode))"
+        }
     }
     else {
-        Write-Output "Resultado: no se detectaron indicadores DFE en este equipo."
+        Write-Output "$warningIcon El servidor no coincide con ninguna configuracion soportada."
+        Write-Output ""
+        Write-Output "Se esperaba:"
+        Write-Output "  - Instalacion nueva: HP Z8 G5 con Windows 10"
+        Write-Output "  - Instalacion nueva: HPE ProLiant Gen10/11 con Windows Server 2019"
+        Write-Output "  - Upgrade: HP Z8 G5/G4/Z840 con Windows 10"
+        Write-Output "  - Upgrade: HPE ProLiant Gen8/9/10 con Windows Server 2019"
+        Write-Output ""
+        Write-Output "Modo pruebas: este paso se marcara como Completado aunque no haya coincidencia."
     }
 }
 
@@ -414,7 +618,7 @@ function Update-VersionCombo {
 
 function Invoke-HardwareValidation {
     Update-StepState -Status "Running"
-    $resultTextBox.Text = "Ejecutando Test-DFEServer..."
+    $resultTextBox.Text = "Ejecutando validacion real de hardware..."
 
     $timer = New-Object Windows.Threading.DispatcherTimer
     $timer.Interval = [TimeSpan]::FromMilliseconds(120)
@@ -424,13 +628,13 @@ function Invoke-HardwareValidation {
         $timerSender.Stop()
 
         try {
-            $output = Test-DFEServer 2>&1 | Out-String
+            $output = Invoke-HardwareRequirementsValidation 2>&1 | Out-String
             $resultTextBox.Text = $output.Trim()
             Update-StepState -Status "Completed"
         }
         catch {
-            $resultTextBox.Text = "Error al ejecutar Test-DFEServer:`r`n$($_.Exception.Message)"
-            Update-StepState -Status "Failed"
+            $resultTextBox.Text = "Error al ejecutar la validacion de hardware:`r`n$($_.Exception.Message)`r`n`r`nModo pruebas: el paso se marca como Completado para permitir continuar."
+            Update-StepState -Status "Completed"
         }
 
         Save-Session

@@ -18,6 +18,8 @@ Herramienta local en PowerShell para validaciones basicas orientadas a servidore
 │   └── Gui.ps1
 ├── config/
 │   └── settings.json
+├── manifests/
+│   └── hardware-requirements.json
 ├── logs/
 └── README.md
 ```
@@ -72,7 +74,7 @@ Ejecutar directamente:
 
 Tambien se puede abrir desde el menu principal con la opcion `5. Abrir interfaz grafica`.
 
-La GUI permite seleccionar producto, modelo y version, cargar el paso `01. Validar hardware`, ejecutar `Test-DFEServer`, ver el resultado en pantalla, consultar el progreso general y generar un resumen. Al cerrar, guarda el estado de la sesion en `config/session.json`.
+La GUI permite seleccionar producto, modelo y version, cargar el paso `01. Validar hardware`, validar fabricante/modelo/SO contra `manifests/hardware-requirements.json`, ver el resultado en pantalla, consultar el progreso general y generar un resumen. En modo pruebas, el paso se marca como completado aunque el servidor no coincida. Al cerrar, guarda el estado de la sesion en `config/session.json`.
 
 ## Notas
 

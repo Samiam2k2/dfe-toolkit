@@ -1,0 +1,341 @@
+{
+  "schemaVersion": "1.0",
+  "source": {
+    "documentTitle": "HP Indigo PrintOS Production Pro for Commercial 8.3 Software Guide",
+    "documentNumber": "TS1ES-00016",
+    "revision": "01",
+    "date": "January 2026",
+    "notes": "Requirements extracted from the Production Pro Commercial 8.3 software guide and intended for automated validation logic. Check CE Suitcase for the most recent source document before promoting to stable."
+  },
+  "products": [
+    {
+      "productId": "production-pro",
+      "productName": "Production Pro",
+      "version": "8.3",
+      "model": "commercial",
+      "displayName": "Production Pro 8.3 Commercial",
+      "rules": {
+        "newInstallation": {
+          "description": "Hardware and operating system combinations listed for new installations.",
+          "allowedHardware": [
+            {
+              "id": "hp-z8-g5-windows-10",
+              "manufacturerPatterns": [
+                "HP",
+                "Hewlett-Packard"
+              ],
+              "modelPatterns": [
+                "HP Z8 G5",
+                "HP Z8 Fury G5 Workstation Desktop PC",
+                "Z8 G5"
+              ],
+              "hardwareGenerationPatterns": [
+                "HP Z8 Fury G5 Workstation Desktop PC",
+                "HP Z8 G5 Workstation"
+              ],
+              "requiredOperatingSystemPatterns": [
+                "Windows 10"
+              ],
+              "notes": "New installations allow an HP Z8 G5 workstation configured with Windows 10."
+            },
+            {
+              "id": "hpe-proliant-gen10-windows-server-2019",
+              "manufacturerPatterns": [
+                "HPE",
+                "Hewlett Packard Enterprise",
+                "HP"
+              ],
+              "modelPatterns": [
+                "ProLiant Gen10",
+                "DL380 Gen10",
+                "HPE ProLiant Gen10"
+              ],
+              "hardwareGenerationPatterns": [
+                "Gen10",
+                "HPE ProLiant Gen10"
+              ],
+              "requiredOperatingSystemPatterns": [
+                "Windows Server 2019"
+              ],
+              "notes": "New installations allow HPE ProLiant Gen10 configured with Windows Server 2019."
+            },
+            {
+              "id": "hpe-proliant-gen11-windows-server-2019",
+              "manufacturerPatterns": [
+                "HPE",
+                "Hewlett Packard Enterprise",
+                "HP"
+              ],
+              "modelPatterns": [
+                "ProLiant Gen11",
+                "DL380 Gen11",
+                "HPE ProLiant Gen11"
+              ],
+              "hardwareGenerationPatterns": [
+                "Gen11",
+                "HPE ProLiant Gen11"
+              ],
+              "requiredOperatingSystemPatterns": [
+                "Windows Server 2019"
+              ],
+              "notes": "New installations allow HPE ProLiant Gen10 or Gen11 configured with Windows Server 2019."
+            }
+          ]
+        },
+        "upgrade": {
+          "description": "Hardware and operating system combinations listed for upgrades from supported previous versions.",
+          "supportedSourceVersions": [
+            "HP PrintOS Production Pro for Commercial 8.2",
+            "HP PrintOS Production Pro for Commercial 8.0.1",
+            "HP PrintOS Production Pro for Commercial 8.0",
+            "HP Production Pro Commercial 7.2",
+            "HP Production Pro Commercial 7.1 with DF3 or later installed"
+          ],
+          "allowedHardware": [
+            {
+              "id": "hp-z8-g5-windows-10",
+              "manufacturerPatterns": [
+                "HP",
+                "Hewlett-Packard"
+              ],
+              "modelPatterns": [
+                "HP Z8 G5",
+                "HP Z8 Fury G5 Workstation Desktop PC",
+                "Z8 G5"
+              ],
+              "hardwareGenerationPatterns": [
+                "HP Z8 Fury G5 Workstation Desktop PC",
+                "HP Z8 G5 Workstation"
+              ],
+              "requiredOperatingSystemPatterns": [
+                "Windows 10"
+              ]
+            },
+            {
+              "id": "hp-z8-g4-windows-10",
+              "manufacturerPatterns": [
+                "HP",
+                "Hewlett-Packard"
+              ],
+              "modelPatterns": [
+                "HP Z8 G4",
+                "Z8 G4"
+              ],
+              "hardwareGenerationPatterns": [
+                "HP Z8 G4 Workstation"
+              ],
+              "requiredOperatingSystemPatterns": [
+                "Windows 10"
+              ]
+            },
+            {
+              "id": "hp-z840-windows-10",
+              "manufacturerPatterns": [
+                "HP",
+                "Hewlett-Packard"
+              ],
+              "modelPatterns": [
+                "HP Z840",
+                "Z840"
+              ],
+              "hardwareGenerationPatterns": [
+                "HP Z840 Workstation"
+              ],
+              "requiredOperatingSystemPatterns": [
+                "Windows 10"
+              ]
+            },
+            {
+              "id": "hpe-proliant-gen10-windows-server-2019",
+              "manufacturerPatterns": [
+                "HPE",
+                "Hewlett Packard Enterprise",
+                "HP"
+              ],
+              "modelPatterns": [
+                "ProLiant Gen10",
+                "DL380 Gen10",
+                "HPE ProLiant Gen10"
+              ],
+              "hardwareGenerationPatterns": [
+                "Gen10",
+                "HPE ProLiant Gen10"
+              ],
+              "requiredOperatingSystemPatterns": [
+                "Windows Server 2019"
+              ]
+            },
+            {
+              "id": "hpe-proliant-gen9-windows-server-2019",
+              "manufacturerPatterns": [
+                "HPE",
+                "Hewlett Packard Enterprise",
+                "HP"
+              ],
+              "modelPatterns": [
+                "ProLiant Gen9",
+                "DL380 Gen9",
+                "DL360 Gen9",
+                "HPE ProLiant Gen9"
+              ],
+              "hardwareGenerationPatterns": [
+                "Gen9",
+                "HPE ProLiant Gen9"
+              ],
+              "requiredOperatingSystemPatterns": [
+                "Windows Server 2019"
+              ]
+            },
+            {
+              "id": "hpe-proliant-gen8-windows-server-2019",
+              "manufacturerPatterns": [
+                "HPE",
+                "Hewlett Packard Enterprise",
+                "HP"
+              ],
+              "modelPatterns": [
+                "ProLiant Gen8",
+                "DL380p",
+                "DL360p",
+                "ML350",
+                "HPE ProLiant Gen8"
+              ],
+              "hardwareGenerationPatterns": [
+                "Gen8",
+                "HPE ProLiant Gen8"
+              ],
+              "requiredOperatingSystemPatterns": [
+                "Windows Server 2019"
+              ]
+            }
+          ]
+        },
+        "blocked": {
+          "pressSeries": [
+            {
+              "id": "series-2",
+              "description": "Series 2 presses are not supported with Production Pro 8.3.",
+              "severity": "blocked"
+            }
+          ]
+        },
+        "ripTables": [
+          {
+            "hardwareFamily": "Gen10 High Power",
+            "serverModel": "DL380",
+            "configuration": "IN170",
+            "expectedRipInstances": 16
+          },
+          {
+            "hardwareFamily": "Gen10",
+            "serverModel": "DL380",
+            "configuration": "IN100",
+            "expectedRipInstances": 5
+          },
+          {
+            "hardwareFamily": "Gen10",
+            "serverModel": "DL380",
+            "configuration": "IN150",
+            "expectedRipInstances": 8
+          },
+          {
+            "hardwareFamily": "Gen8 or Gen9",
+            "serverModel": "DL380p",
+            "systemManagerInstalled": true,
+            "pressControllerInstalled": true,
+            "expectedRipInstances": 5
+          },
+          {
+            "hardwareFamily": "Gen8 or Gen9",
+            "serverModel": "DL380p",
+            "systemManagerInstalled": true,
+            "pressControllerInstalled": false,
+            "expectedRipInstances": 5
+          },
+          {
+            "hardwareFamily": "Gen8 or Gen9",
+            "serverModel": "DL380p",
+            "systemManagerInstalled": false,
+            "pressControllerInstalled": true,
+            "expectedRipInstances": 5
+          },
+          {
+            "hardwareFamily": "Gen8 or Gen9",
+            "serverModel": "DL360p",
+            "systemManagerInstalled": false,
+            "pressControllerInstalled": false,
+            "expectedRipInstances": 9
+          },
+          {
+            "hardwareFamily": "Gen8 Tower",
+            "serverModel": "ML350",
+            "configuration": "IN050T",
+            "expectedRipInstances": 2
+          },
+          {
+            "hardwareFamily": "Gen8 Tower",
+            "serverModel": "ML350",
+            "configuration": "IN100T",
+            "expectedRipInstances": 5
+          },
+          {
+            "hardwareFamily": "Gen8 Tower",
+            "serverModel": "ML350",
+            "configuration": "IN150T",
+            "expectedRipInstances": 8
+          },
+          {
+            "hardwareFamily": "HP Z-series Workstations",
+            "serverModel": "HP Z8G4 Workstation",
+            "configuration": "IN100TWS",
+            "expectedRipInstances": 5
+          },
+          {
+            "hardwareFamily": "HP Z-series Workstations",
+            "serverModel": "HP Z8G4 Workstation",
+            "configuration": "IN100WS",
+            "expectedRipInstances": 5
+          },
+          {
+            "hardwareFamily": "HP Z-series Workstations",
+            "serverModel": "HP Z8G4 Workstation",
+            "configuration": "IN150WS",
+            "expectedRipInstances": 8
+          },
+          {
+            "hardwareFamily": "HP Z-series Workstations",
+            "serverModel": "HP Z8G4 Workstation",
+            "configuration": "IN170WS",
+            "expectedRipInstances": 16
+          },
+          {
+            "hardwareFamily": "HP Z-series Workstations",
+            "serverModel": "HP Z8G5 B1 Workstation",
+            "configuration": "S3 press",
+            "expectedRipInstances": 8
+          },
+          {
+            "hardwareFamily": "HP Z-series Workstations",
+            "serverModel": "HP Z8G5 B1 Workstation",
+            "configuration": "S4 press",
+            "expectedRipInstances": 12
+          },
+          {
+            "hardwareFamily": "HP Z-series Workstations",
+            "serverModel": "HP Z8G5 B1 Workstation",
+            "configuration": "S5 press",
+            "expectedRipInstances": 16
+          }
+        ]
+      },
+      "validationPolicy": {
+        "defaultMode": "newInstallation",
+        "strictDefault": true,
+        "allowDevelopmentOverride": true,
+        "blockingOnUnsupportedHardware": true,
+        "recommendedRegistryPath": "HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Hewlett-Packard\\IndigoDFE",
+        "recommendedRegistryValue": "HardwareGeneration"
+      }
+    }
+  ]
+}

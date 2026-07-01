@@ -1,24 +1,17 @@
-<#
-.SYNOPSIS
-    Punto de entrada local para DFE Toolkit.
-.DESCRIPTION
-    Muestra un mensaje de bienvenida y ejecuta src/Main.ps1 desde la carpeta
-    local del proyecto.
-#>
+Write-Host "🚀 DFE-Toolkit v0.1" -ForegroundColor Cyan
+Write-Host "==============================================" -ForegroundColor Gray
+Write-Host "📥 Descargando el motor principal..." -ForegroundColor Cyan
 
-$ErrorActionPreference = "Stop"
+$mainScriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/src/Main.ps1"
 
-$projectRoot = $PSScriptRoot
-$mainScript = Join-Path -Path $projectRoot -ChildPath "src/Main.ps1"
-
-Write-Host ""
-Write-Host "Bienvenido a DFE Toolkit" -ForegroundColor Cyan
-Write-Host "Ejecutando herramienta local..." -ForegroundColor Gray
-Write-Host ""
-
-if (-not (Test-Path -Path $mainScript -PathType Leaf)) {
-    Write-Error "No se encontro el script principal en: $mainScript"
+try {
+    $scriptContent = Invoke-RestMethod -Uri $mainScriptUrl -ErrorAction Stop
+    Write-Host "✅ Script descargado correctamente" -ForegroundColor Green
+}
+catch {
+    Write-Error "❌ Error al descargar el script: $_"
     exit 1
 }
 
-& $mainScript
+Write-Host "▶️  Ejecutando el motor principal..." -ForegroundColor Cyan
+Invoke-Expression $scriptContent

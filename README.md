@@ -72,7 +72,7 @@ Ejecutar directamente:
 
 Tambien se puede abrir desde el menu principal con la opcion `5. Abrir interfaz grafica`.
 
-La GUI permite seleccionar producto, modelo y version, cargar pasos de instalacion, ejecutar pasos en modo demo, ver progreso general y generar un resumen. Al cerrar, guarda el estado de la sesion en `config/session.json`.
+La GUI permite seleccionar producto, modelo y version, cargar el paso `01. Validar hardware`, ejecutar `Test-DFEServer`, ver el resultado en pantalla, consultar el progreso general y generar un resumen. Al cerrar, guarda el estado de la sesion en `config/session.json`.
 
 ## Notas
 

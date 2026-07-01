@@ -22,15 +22,37 @@ Herramienta local en PowerShell para validaciones basicas orientadas a servidore
 └── README.md
 ```
 
-## Uso
+## Uso remoto
 
-Desde la carpeta del proyecto:
+Comando principal, abre la GUI WPF por defecto:
+
+```powershell
+irm https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/bootstrap.ps1 | iex
+```
+
+Comando alternativo para abrir el menu de texto:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/bootstrap.ps1))) -NoGUI
+```
+
+> Nota: PowerShell no permite pasar `-NoGUI` directamente a `iex` con `irm ... | iex -NoGUI`; ese switch se interpreta como parametro de `Invoke-Expression`, no del script descargado.
+
+## Uso local
+
+Desde la carpeta del proyecto, GUI por defecto:
 
 ```powershell
 .\bootstrap.ps1
 ```
 
-El script muestra un menu con estas opciones:
+Menu de texto:
+
+```powershell
+.\bootstrap.ps1 -NoGUI
+```
+
+El menu de texto incluye estas opciones:
 
 1. Validar Hardware
 2. Validar Red

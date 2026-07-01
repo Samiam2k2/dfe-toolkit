@@ -1,3 +1,7 @@
+param(
+    [switch]$NoGUI
+)
+
 Write-Host "🚀 DFE-Toolkit v0.1" -ForegroundColor Cyan
 Write-Host "==============================================" -ForegroundColor Gray
 Write-Host "📥 Descargando el motor principal..." -ForegroundColor Cyan
@@ -20,4 +24,11 @@ catch {
 }
 
 Write-Host "▶️  Ejecutando el motor principal..." -ForegroundColor Cyan
-Invoke-Expression $scriptContent
+$mainScriptBlock = [scriptblock]::Create($scriptContent)
+
+if ($NoGUI) {
+    & $mainScriptBlock -NoGUI
+}
+else {
+    & $mainScriptBlock
+}

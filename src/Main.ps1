@@ -6,6 +6,10 @@
     o superior.
 #>
 
+param(
+    [switch]$NoGUI
+)
+
 function Get-SystemInfo {
     [CmdletBinding()]
     param()
@@ -158,25 +162,7 @@ function Show-Menu {
                 Show-DemoSummary
             }
             "5" {
-                $guiScript = $null
-                if ($PSScriptRoot) {
-                    $guiScript = Join-Path -Path $PSScriptRoot -ChildPath "Gui.ps1"
-                }
-
-                if ($guiScript -and (Test-Path -Path $guiScript -PathType Leaf)) {
-                    & $guiScript
-                }
-                else {
-                    $guiScriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/src/Gui.ps1"
-                    try {
-                        Write-Host "Descargando interfaz grafica desde GitHub..." -ForegroundColor Cyan
-                        $guiContent = Invoke-RestMethod -Uri $guiScriptUrl -ErrorAction Stop
-                        Invoke-Expression $guiContent
-                    }
-                    catch {
-                        Write-Host "No se pudo cargar la GUI: $($_.Exception.Message)" -ForegroundColor Red
-                    }
-                }
+                Invoke-DFEGui
             }
             default {
                 Write-Host "Opcion invalida. Intente nuevamente." -ForegroundColor Yellow
@@ -185,4 +171,52 @@ function Show-Menu {
     } while ($option -ne "3")
 }
 
-Show-Menu
+function Invoke-DFEGui {
+    [CmdletBinding()]
+    param()
+
+    $guiScript = $null
+    if ($PSScriptRoot) {
+        $guiScript = Join-Path -Path $PSScriptRoot -ChildPath "Gui.ps1"
+    }
+
+    if ($guiScript -and (Test-Path -Path $guiScript -PathType Leaf)) {
+        & $guiScript
+        return
+    }
+
+    $guiScriptBaseUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/src/Gui.ps1"
+    $cacheBust = [DateTime]::UtcNow.Ticks
+    $guiScriptUrl = "$guiScriptBaseUrl`?cacheBust=$cacheBust"
+    $headers = @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    }
+
+    Write-Host "Descargando interfaz grafica desde GitHub..." -ForegroundColor Cyan
+    $guiContent = Invoke-RestMethod -Uri $guiScriptUrl -Headers $headers -ErrorAction Stop
+    $guiBlock = [scriptblock]::Create($guiContent)
+    & $guiBlock
+}
+
+if ($NoGUI) {
+    Show-Menu
+}
+else {
+    try {
+        Invoke-DFEGui
+    }
+    catch {
+        Write-Host ""
+        Write-Host "No se pudo abrir la interfaz grafica: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "Puede ejecutar el menu de texto como alternativa." -ForegroundColor Yellow
+        $answer = Read-Host "Desea abrir el menu de texto ahora? (S/N)"
+
+        if ($answer -match "^[sSyY]") {
+            Show-Menu
+        }
+        else {
+            Write-Host "Ejecucion finalizada." -ForegroundColor Gray
+        }
+    }
+}

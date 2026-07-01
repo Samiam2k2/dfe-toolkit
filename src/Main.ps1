@@ -138,6 +138,7 @@ function Show-Menu {
         Write-Host "2. Validar Red"
         Write-Host "3. Salir"
         Write-Host "4. Ver resumen de instalacion"
+        Write-Host "5. Abrir interfaz grafica"
         Write-Host ""
 
         $option = Read-Host "Seleccione una opcion"
@@ -155,6 +156,27 @@ function Show-Menu {
             }
             "4" {
                 Show-DemoSummary
+            }
+            "5" {
+                $guiScript = $null
+                if ($PSScriptRoot) {
+                    $guiScript = Join-Path -Path $PSScriptRoot -ChildPath "Gui.ps1"
+                }
+
+                if ($guiScript -and (Test-Path -Path $guiScript -PathType Leaf)) {
+                    & $guiScript
+                }
+                else {
+                    $guiScriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/src/Gui.ps1"
+                    try {
+                        Write-Host "Descargando interfaz grafica desde GitHub..." -ForegroundColor Cyan
+                        $guiContent = Invoke-RestMethod -Uri $guiScriptUrl -ErrorAction Stop
+                        Invoke-Expression $guiContent
+                    }
+                    catch {
+                        Write-Host "No se pudo cargar la GUI: $($_.Exception.Message)" -ForegroundColor Red
+                    }
+                }
             }
             default {
                 Write-Host "Opcion invalida. Intente nuevamente." -ForegroundColor Yellow

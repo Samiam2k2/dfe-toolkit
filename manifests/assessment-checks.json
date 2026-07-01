@@ -1,0 +1,318 @@
+{
+  "schemaVersion": "1.0",
+  "product": "Production Pro Commercial",
+  "version": "8.3",
+  "sourceDocument": "HPI_DFE_Assessment_ReadMe_v4.8i48.html",
+  "scope": {
+    "included": [
+      "Appendix A - Prod Pro Upgrade Check",
+      "Appendix C - Prod Pro System Check"
+    ],
+    "excluded": [
+      "Esko / Labels & Packaging checks"
+    ],
+    "notes": "Commercial-only validation manifest. Created from the requested Appendix A/C scope; review against the source HTML before enforcing blocking behavior in production."
+  },
+  "checks": [
+    {
+      "id": "check-hardware-model",
+      "category": "hardware",
+      "name": "Validar modelo de servidor",
+      "description": "Verifica que el servidor sea HP Z8 G5 o HPE ProLiant Gen10/11 para instalacion nueva, o una plataforma soportada para upgrade.",
+      "script": "scripts/validation/Validate-HardwareModel.ps1",
+      "required": true,
+      "blocking": true,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-hardware-manufacturer",
+      "category": "hardware",
+      "name": "Validar fabricante del servidor",
+      "description": "Verifica que el fabricante reportado por WMI/CIM corresponda a HP, Hewlett-Packard o HPE.",
+      "script": "scripts/validation/Validate-HardwareManufacturer.ps1",
+      "required": true,
+      "blocking": true,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-hardware-generation",
+      "category": "hardware",
+      "name": "Validar generacion de hardware",
+      "description": "Verifica la generacion de workstation o ProLiant contra las generaciones aprobadas para Commercial 8.3.",
+      "script": "scripts/validation/Validate-HardwareGeneration.ps1",
+      "required": true,
+      "blocking": true,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-memory-capacity",
+      "category": "hardware",
+      "name": "Validar memoria instalada",
+      "description": "Verifica que la memoria fisica instalada cumpla el minimo requerido para el perfil Commercial.",
+      "script": "scripts/validation/Validate-Memory.ps1",
+      "required": true,
+      "blocking": true,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-cpu-inventory",
+      "category": "hardware",
+      "name": "Validar procesadores",
+      "description": "Inventaria CPU, sockets y nucleos para confirmar que el servidor corresponde al perfil soportado.",
+      "script": "scripts/validation/Validate-Processor.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-operating-system-version",
+      "category": "operating-system",
+      "name": "Validar version de sistema operativo",
+      "description": "Verifica Windows 10 o Windows Server 2019 segun el tipo de hardware y flujo.",
+      "script": "scripts/validation/Validate-OperatingSystem.ps1",
+      "required": true,
+      "blocking": true,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-os-architecture",
+      "category": "operating-system",
+      "name": "Validar arquitectura de sistema operativo",
+      "description": "Confirma que el sistema operativo sea de 64 bits.",
+      "script": "scripts/validation/Validate-OSArchitecture.ps1",
+      "required": true,
+      "blocking": true,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-os-build",
+      "category": "operating-system",
+      "name": "Validar build de Windows",
+      "description": "Registra y valida build/revision de Windows contra el baseline aprobado.",
+      "script": "scripts/validation/Validate-OSBuild.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-pending-reboot",
+      "category": "operating-system",
+      "name": "Validar reinicio pendiente",
+      "description": "Detecta reinicios pendientes antes de instalar o actualizar Production Pro.",
+      "script": "scripts/validation/Test-PendingReboot.ps1",
+      "required": true,
+      "blocking": true,
+      "source": "Appendix A - Prod Pro Upgrade Check"
+    },
+    {
+      "id": "check-admin-privileges",
+      "category": "security",
+      "name": "Validar privilegios de administrador",
+      "description": "Confirma que la herramienta se ejecute con privilegios administrativos.",
+      "script": "scripts/validation/Validate-AdminRights.ps1",
+      "required": true,
+      "blocking": true,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-uac-policy",
+      "category": "security",
+      "name": "Validar configuracion UAC",
+      "description": "Registra la configuracion UAC relevante para instalacion y servicios.",
+      "script": "scripts/validation/Validate-UAC.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-firewall-profile",
+      "category": "security",
+      "name": "Validar perfiles de firewall",
+      "description": "Revisa perfiles de Windows Firewall y reglas relevantes para conectividad DFE.",
+      "script": "scripts/validation/Validate-Firewall.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-network-adapter-names",
+      "category": "network",
+      "name": "Validar nombres de adaptadores",
+      "description": "Verifica que existan DataLAN, External LAN e Internal LAN con nombres exactos.",
+      "script": "scripts/validation/Validate-NetworkAdapterNames.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-network-adapter-state",
+      "category": "network",
+      "name": "Validar estado de adaptadores",
+      "description": "Confirma que los adaptadores esperados esten activos.",
+      "script": "scripts/validation/Validate-NetworkAdapterState.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-network-static-ip",
+      "category": "network",
+      "name": "Validar IP estatica",
+      "description": "Verifica que los adaptadores esperados no usen DHCP.",
+      "script": "scripts/validation/Validate-StaticIP.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-network-metrics",
+      "category": "network",
+      "name": "Validar metricas de red",
+      "description": "Verifica metrica 40 para DataLAN/Internal LAN y metrica 5 para External LAN.",
+      "script": "scripts/validation/Validate-NetworkMetrics.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-hosts-file",
+      "category": "network",
+      "name": "Validar archivo hosts",
+      "description": "Revisa entradas requeridas en hosts para resolucion local de componentes DFE.",
+      "script": "scripts/validation/Validate-HostsFile.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix A - Prod Pro Upgrade Check"
+    },
+    {
+      "id": "check-storage-free-space",
+      "category": "storage",
+      "name": "Validar espacio libre",
+      "description": "Verifica espacio libre minimo para instalacion, actualizacion, cache y backups.",
+      "script": "scripts/validation/Validate-FreeSpace.ps1",
+      "required": true,
+      "blocking": true,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-storage-drive-layout",
+      "category": "storage",
+      "name": "Validar unidades y layout",
+      "description": "Inventaria unidades requeridas, letras, tipo de disco y disponibilidad.",
+      "script": "scripts/validation/Validate-DriveLayout.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-storage-backup-location",
+      "category": "storage",
+      "name": "Validar ubicacion de backup",
+      "description": "Confirma disponibilidad de ubicaciones usadas para backup antes/despues de upgrade.",
+      "script": "scripts/validation/Validate-BackupLocation.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix A - Prod Pro Upgrade Check"
+    },
+    {
+      "id": "check-license-services",
+      "category": "licensing",
+      "name": "Validar servicios de licencia",
+      "description": "Verifica presencia y estado de servicios o componentes de licenciamiento requeridos.",
+      "script": "scripts/validation/Validate-LicenseServices.ps1",
+      "required": true,
+      "blocking": true,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-license-files",
+      "category": "licensing",
+      "name": "Validar archivos de licencia",
+      "description": "Verifica disponibilidad de archivos o configuraciones de licencia antes de continuar.",
+      "script": "scripts/validation/Validate-LicenseFiles.ps1",
+      "required": true,
+      "blocking": true,
+      "source": "Appendix A - Prod Pro Upgrade Check"
+    },
+    {
+      "id": "check-dfe-services-present",
+      "category": "services",
+      "name": "Validar servicios DFE instalados",
+      "description": "Inventaria servicios Production Pro/DFE presentes en el servidor.",
+      "script": "scripts/validation/Validate-DFEServicesPresent.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-dfe-services-state",
+      "category": "services",
+      "name": "Validar estado de servicios DFE",
+      "description": "Verifica servicios detenidos/en ejecucion segun corresponda al flujo de upgrade o sistema.",
+      "script": "scripts/validation/Validate-DFEServicesState.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix A - Prod Pro Upgrade Check"
+    },
+    {
+      "id": "check-iis-services",
+      "category": "services",
+      "name": "Validar IIS y servicios web",
+      "description": "Confirma disponibilidad y estado de componentes web usados por Production Pro.",
+      "script": "scripts/validation/Validate-IIS.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-database-engine",
+      "category": "database",
+      "name": "Validar motor de base de datos",
+      "description": "Verifica presencia, version y estado del motor de base de datos requerido.",
+      "script": "scripts/validation/Validate-DatabaseEngine.ps1",
+      "required": true,
+      "blocking": true,
+      "source": "Appendix C - Prod Pro System Check"
+    },
+    {
+      "id": "check-database-connectivity",
+      "category": "database",
+      "name": "Validar conectividad a base de datos",
+      "description": "Prueba conectividad local a las bases de datos de Production Pro.",
+      "script": "scripts/validation/Validate-DatabaseConnectivity.ps1",
+      "required": true,
+      "blocking": true,
+      "source": "Appendix A - Prod Pro Upgrade Check"
+    },
+    {
+      "id": "check-database-backup",
+      "category": "database",
+      "name": "Validar backup de base de datos",
+      "description": "Confirma existencia o viabilidad de backup antes de upgrade.",
+      "script": "scripts/validation/Validate-DatabaseBackup.ps1",
+      "required": true,
+      "blocking": true,
+      "source": "Appendix A - Prod Pro Upgrade Check"
+    },
+    {
+      "id": "check-customization-files",
+      "category": "customization",
+      "name": "Validar personalizaciones",
+      "description": "Detecta personalizaciones locales que deban preservarse antes de upgrade.",
+      "script": "scripts/validation/Validate-Customizations.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix A - Prod Pro Upgrade Check"
+    },
+    {
+      "id": "check-customization-backup",
+      "category": "customization",
+      "name": "Validar backup de personalizaciones",
+      "description": "Verifica que personalizaciones detectadas tengan respaldo o plan de restauracion.",
+      "script": "scripts/validation/Validate-CustomizationBackup.ps1",
+      "required": true,
+      "blocking": false,
+      "source": "Appendix A - Prod Pro Upgrade Check"
+    }
+  ]
+}

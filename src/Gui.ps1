@@ -43,7 +43,8 @@ $session = @{
     Product = "Production Pro"
     Model = "Commercial"
     Version = "8.3"
-    Status = "Pending"
+    HardwareStatus = "Pending"
+    NetworkStatus = "Pending"
     LastResult = ""
 }
 
@@ -53,6 +54,8 @@ if (Test-Path -Path $sessionPath -PathType Leaf) {
         if ($loadedSession.Product) { $session.Product = $loadedSession.Product }
         if ($loadedSession.Model) { $session.Model = $loadedSession.Model }
         if ($loadedSession.Version) { $session.Version = $loadedSession.Version }
+        if ($loadedSession.HardwareStatus) { $session.HardwareStatus = $loadedSession.HardwareStatus }
+        if ($loadedSession.NetworkStatus) { $session.NetworkStatus = $loadedSession.NetworkStatus }
         if ($loadedSession.LastResult) { $session.LastResult = $loadedSession.LastResult }
     }
     catch {
@@ -326,6 +329,98 @@ function Invoke-HardwareRequirementsValidation {
     }
 }
 
+function Invoke-NetworkRequirementsValidation {
+    [CmdletBinding()]
+    param()
+
+    $networkIcon = [char]::ConvertFromUtf32(0x1F310)
+    $checkIcon = [char]::ConvertFromUtf32(0x2705)
+    $failIcon = [char]::ConvertFromUtf32(0x274C)
+    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
+
+    $expectedAdapters = @(
+        @{ Name = "DataLAN"; Metric = 40 },
+        @{ Name = "External LAN"; Metric = 5 },
+        @{ Name = "Internal LAN"; Metric = 40 }
+    )
+    $expectedAdapterNames = @($expectedAdapters | ForEach-Object { $_.Name })
+
+    $physicalAdapters = @(Get-NetAdapter -Physical -ErrorAction Stop)
+    $foundExpected = @()
+    $missingExpected = @()
+
+    Write-Output "$networkIcon Validacion de red"
+    Write-Output "====================="
+    Write-Output ""
+    Write-Output "**Adaptadores esperados (segun documento):**"
+
+    foreach ($expected in $expectedAdapters) {
+        $adapter = $physicalAdapters | Where-Object { $_.Name -eq $expected.Name } | Select-Object -First 1
+
+        if (-not $adapter) {
+            $missingExpected += $expected.Name
+            Write-Output "- $($expected.Name): $failIcon No encontrado (se esperaba un adaptador con este nombre)"
+            continue
+        }
+
+        $foundExpected += $expected.Name
+        $ipInterface = Get-NetIPInterface -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Select-Object -First 1
+        $ipAddresses = @(Get-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object {
+            $_.IPAddress -and $_.IPAddress -notlike "169.254.*"
+        })
+
+        $ipText = if ($ipAddresses.Count -gt 0) { ($ipAddresses.IPAddress -join ", ") } else { "sin IPv4" }
+        $isUp = ($adapter.Status -eq "Up")
+        $isStatic = ($ipInterface -and [string]$ipInterface.Dhcp -eq "Disabled")
+        $metric = if ($ipInterface) { [int]$ipInterface.InterfaceMetric } else { $null }
+        $metricOk = ($null -ne $metric -and $metric -eq [int]$expected.Metric)
+
+        $details = @()
+        $details += if ($isUp) { "Up" } else { "Estado: $($adapter.Status)" }
+        $details += "IP: $ipText"
+        $details += if ($isStatic) { "IP estatica" } else { "DHCP activo o no confirmado" }
+        $details += if ($metricOk) { "Metrica: $metric correcta" } else { "Metrica: $metric; esperada: $($expected.Metric)" }
+
+        if ($isUp -and $isStatic -and $metricOk -and $ipAddresses.Count -gt 0) {
+            Write-Output "- $($expected.Name): $checkIcon Encontrado ($($details -join ', '))"
+        }
+        else {
+            Write-Output "- $($expected.Name): $warningIcon Encontrado con advertencias ($($details -join ', '))"
+        }
+    }
+
+    Write-Output ""
+    Write-Output "**Adaptadores reales no esperados:**"
+    $unexpectedAdapters = @($physicalAdapters | Where-Object { $expectedAdapterNames -notcontains $_.Name })
+
+    if ($unexpectedAdapters.Count -eq 0) {
+        Write-Output "- Ninguno"
+    }
+    else {
+        foreach ($adapter in $unexpectedAdapters) {
+            $ipAddresses = @(Get-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object {
+                $_.IPAddress -and $_.IPAddress -notlike "169.254.*"
+            })
+            $ipText = if ($ipAddresses.Count -gt 0) { ($ipAddresses.IPAddress -join ", ") } else { "sin IPv4" }
+            Write-Output "- $($adapter.Name) ($($adapter.Status), IP: $ipText)"
+        }
+    }
+
+    Write-Output ""
+    if ($foundExpected.Count -eq 0) {
+        Write-Output "**Resumen:** $warningIcon No se encontraron adaptadores con los nombres esperados."
+    }
+    elseif ($missingExpected.Count -gt 0) {
+        Write-Output "**Resumen:** $warningIcon Configuracion parcialmente correcta. Falta $($missingExpected -join ', ')."
+    }
+    else {
+        Write-Output "**Resumen:** $checkIcon Se encontraron todos los adaptadores esperados. Revise advertencias de estado, DHCP o metrica si aparecen arriba."
+    }
+
+    Write-Output ""
+    Write-Output "Modo pruebas: este paso se marcara como Completado aunque existan advertencias."
+}
+
 $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -435,7 +530,7 @@ $xaml = @"
 
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="#F8FAFC">
                 <StackPanel Margin="24">
-                    <Border x:Name="StepCard"
+                    <Border x:Name="HardwareStepCard"
                             Background="#FFFFFF"
                             BorderBrush="#E5E7EB"
                             BorderThickness="1"
@@ -451,8 +546,29 @@ $xaml = @"
                             </Grid.ColumnDefinitions>
                             <TextBlock Text="01" FontSize="18" FontWeight="Bold" Foreground="#0078D4" VerticalAlignment="Center" />
                             <TextBlock Grid.Column="1" Text="Validar hardware" FontSize="14" Foreground="#111827" VerticalAlignment="Center" />
-                            <TextBlock x:Name="StepStatusText" Grid.Column="2" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <Button x:Name="ExecuteButton" Grid.Column="3" Content="Ejecutar" Width="92" Height="32" HorizontalAlignment="Right" />
+                            <TextBlock x:Name="HardwareStatusText" Grid.Column="2" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Button x:Name="ExecuteHardwareButton" Grid.Column="3" Content="Ejecutar" Width="92" Height="32" HorizontalAlignment="Right" />
+                        </Grid>
+                    </Border>
+
+                    <Border x:Name="NetworkStepCard"
+                            Background="#FFFFFF"
+                            BorderBrush="#E5E7EB"
+                            BorderThickness="1"
+                            CornerRadius="7"
+                            Padding="14"
+                            Margin="0,0,0,14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="58" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="160" />
+                                <ColumnDefinition Width="110" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="02" FontSize="18" FontWeight="Bold" Foreground="#0078D4" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="Validar red" FontSize="14" Foreground="#111827" VerticalAlignment="Center" />
+                            <TextBlock x:Name="NetworkStatusText" Grid.Column="2" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Button x:Name="ExecuteNetworkButton" Grid.Column="3" Content="Ejecutar" Width="92" Height="32" HorizontalAlignment="Right" />
                         </Grid>
                     </Border>
 
@@ -498,9 +614,12 @@ $productCombo = $window.FindName("ProductCombo")
 $modelCombo = $window.FindName("ModelCombo")
 $versionCombo = $window.FindName("VersionCombo")
 $loadStepsButton = $window.FindName("LoadStepsButton")
-$stepCard = $window.FindName("StepCard")
-$stepStatusText = $window.FindName("StepStatusText")
-$executeButton = $window.FindName("ExecuteButton")
+$hardwareStepCard = $window.FindName("HardwareStepCard")
+$networkStepCard = $window.FindName("NetworkStepCard")
+$hardwareStatusText = $window.FindName("HardwareStatusText")
+$networkStatusText = $window.FindName("NetworkStatusText")
+$executeHardwareButton = $window.FindName("ExecuteHardwareButton")
+$executeNetworkButton = $window.FindName("ExecuteNetworkButton")
 $resultTextBox = $window.FindName("ResultTextBox")
 $progressBar = $window.FindName("MainProgressBar")
 $progressLabel = $window.FindName("ProgressLabel")
@@ -524,16 +643,27 @@ $shadow.Color = [Windows.Media.Color]::FromRgb(0, 0, 0)
 $shadow.BlurRadius = 12
 $shadow.ShadowDepth = 1
 $shadow.Opacity = 0.16
-$stepCard.Effect = $shadow
+$hardwareStepCard.Effect = $shadow
 
-$script:stepStatus = "Pending"
+$networkShadow = New-Object Windows.Media.Effects.DropShadowEffect
+$networkShadow.Color = [Windows.Media.Color]::FromRgb(0, 0, 0)
+$networkShadow.BlurRadius = 12
+$networkShadow.ShadowDepth = 1
+$networkShadow.Opacity = 0.16
+$networkStepCard.Effect = $networkShadow
+
+$script:stepStatuses = @{
+    Hardware = $session.HardwareStatus
+    Network = $session.NetworkStatus
+}
 
 function Save-Session {
     $sessionObject = [ordered]@{
         Product = [string]$productCombo.SelectedItem
         Model = [string]$modelCombo.SelectedItem
         Version = [string]$versionCombo.SelectedItem
-        Status = $script:stepStatus
+        HardwareStatus = $script:stepStatuses.Hardware
+        NetworkStatus = $script:stepStatuses.Network
         LastResult = $resultTextBox.Text
         SavedAt = (Get-Date).ToString("s")
     }
@@ -541,43 +671,59 @@ function Save-Session {
     $sessionObject | ConvertTo-Json -Depth 4 | Set-Content -Path $sessionPath -Encoding UTF8
 }
 
-function Update-StepState {
-    param([string]$Status)
+function Update-Progress {
+    $completed = @($script:stepStatuses.Values | Where-Object { $_ -eq "Completed" }).Count
+    $percent = [math]::Round(($completed / 2) * 100, 0)
+    $progressBar.Value = $percent
+    $progressLabel.Text = "Progreso general: $percent% ($completed de 2 pasos completados)"
+}
 
-    $script:stepStatus = $Status
-    $stepStatusText.Text = Get-StatusText -Status $Status
-    $executeButton.Visibility = if ($Status -eq "Pending") { "Visible" } else { "Collapsed" }
-    $executeButton.IsEnabled = ($Status -eq "Pending")
+function Update-StepState {
+    param(
+        [string]$Step,
+        [string]$Status
+    )
+
+    $script:stepStatuses[$Step] = $Status
+
+    if ($Step -eq "Hardware") {
+        $statusText = $hardwareStatusText
+        $button = $executeHardwareButton
+    }
+    else {
+        $statusText = $networkStatusText
+        $button = $executeNetworkButton
+    }
+
+    $statusText.Text = Get-StatusText -Status $Status
+    $button.Visibility = if ($Status -eq "Pending") { "Visible" } else { "Collapsed" }
+    $button.IsEnabled = ($Status -eq "Pending")
 
     switch ($Status) {
         "Completed" {
-            $stepStatusText.Foreground = "#15803D"
-            $progressBar.Value = 100
-            $progressLabel.Text = "Progreso general: 100% (1 de 1 paso completado)"
+            $statusText.Foreground = "#15803D"
         }
         "Failed" {
-            $stepStatusText.Foreground = "#B91C1C"
-            $progressBar.Value = 0
-            $progressLabel.Text = "Progreso general: 0% (0 de 1 pasos completados)"
+            $statusText.Foreground = "#B91C1C"
         }
         "Running" {
-            $stepStatusText.Foreground = "#1D4ED8"
-            $progressBar.Value = 0
-            $progressLabel.Text = "Progreso general: 0% (validacion en ejecucion)"
+            $statusText.Foreground = "#1D4ED8"
         }
         default {
-            $stepStatusText.Foreground = "#92400E"
-            $progressBar.Value = 0
-            $progressLabel.Text = "Progreso general: 0% (0 de 1 pasos completados)"
+            $statusText.Foreground = "#92400E"
         }
     }
+
+    Update-Progress
 }
 
-function Load-SingleStep {
-    $script:stepStatus = "Pending"
+function Load-Steps {
+    $script:stepStatuses.Hardware = "Pending"
+    $script:stepStatuses.Network = "Pending"
     $resultTextBox.Text = ""
     $planSubtitle.Text = "$($productCombo.SelectedItem) - $($modelCombo.SelectedItem) - Version $($versionCombo.SelectedItem)"
-    Update-StepState -Status "Pending"
+    Update-StepState -Step "Hardware" -Status "Pending"
+    Update-StepState -Step "Network" -Status "Pending"
     Save-Session
 }
 
@@ -617,7 +763,7 @@ function Update-VersionCombo {
 }
 
 function Invoke-HardwareValidation {
-    Update-StepState -Status "Running"
+    Update-StepState -Step "Hardware" -Status "Running"
     $resultTextBox.Text = "Ejecutando validacion real de hardware..."
 
     $timer = New-Object Windows.Threading.DispatcherTimer
@@ -630,11 +776,37 @@ function Invoke-HardwareValidation {
         try {
             $output = Invoke-HardwareRequirementsValidation 2>&1 | Out-String
             $resultTextBox.Text = $output.Trim()
-            Update-StepState -Status "Completed"
+            Update-StepState -Step "Hardware" -Status "Completed"
         }
         catch {
             $resultTextBox.Text = "Error al ejecutar la validacion de hardware:`r`n$($_.Exception.Message)`r`n`r`nModo pruebas: el paso se marca como Completado para permitir continuar."
-            Update-StepState -Status "Completed"
+            Update-StepState -Step "Hardware" -Status "Completed"
+        }
+
+        Save-Session
+    })
+    $timer.Start()
+}
+
+function Invoke-NetworkValidation {
+    Update-StepState -Step "Network" -Status "Running"
+    $resultTextBox.Text = "Ejecutando validacion de red..."
+
+    $timer = New-Object Windows.Threading.DispatcherTimer
+    $timer.Interval = [TimeSpan]::FromMilliseconds(120)
+    $timer.Add_Tick({
+        param($timerSender, $timerArgs)
+
+        $timerSender.Stop()
+
+        try {
+            $output = Invoke-NetworkRequirementsValidation 2>&1 | Out-String
+            $resultTextBox.Text = $output.Trim()
+            Update-StepState -Step "Network" -Status "Completed"
+        }
+        catch {
+            $resultTextBox.Text = "Error al ejecutar la validacion de red:`r`n$($_.Exception.Message)`r`n`r`nModo pruebas: el paso se marca como Completado para permitir continuar."
+            Update-StepState -Step "Network" -Status "Completed"
         }
 
         Save-Session
@@ -643,7 +815,7 @@ function Invoke-HardwareValidation {
 }
 
 function Show-Report {
-    $message = "Reporte DFE-Toolkit`n`nProducto: $($productCombo.SelectedItem)`nModelo: $($modelCombo.SelectedItem)`nVersion: $($versionCombo.SelectedItem)`nPaso 01 - Validar hardware: $(Get-StatusText -Status $script:stepStatus)"
+    $message = "Reporte DFE-Toolkit`n`nProducto: $($productCombo.SelectedItem)`nModelo: $($modelCombo.SelectedItem)`nVersion: $($versionCombo.SelectedItem)`nPaso 01 - Validar hardware: $(Get-StatusText -Status $script:stepStatuses.Hardware)`nPaso 02 - Validar red: $(Get-StatusText -Status $script:stepStatuses.Network)"
     [Windows.MessageBox]::Show($message, "Reporte DFE-Toolkit", "OK", "Information") | Out-Null
 }
 
@@ -667,11 +839,15 @@ $modelCombo.Add_SelectionChanged({
 })
 
 $loadStepsButton.Add_Click({
-    Load-SingleStep
+    Load-Steps
 })
 
-$executeButton.Add_Click({
+$executeHardwareButton.Add_Click({
     Invoke-HardwareValidation
+})
+
+$executeNetworkButton.Add_Click({
+    Invoke-NetworkValidation
 })
 
 $reportButton.Add_Click({
@@ -683,6 +859,8 @@ $window.Add_Closing({
 })
 
 Update-ModelCombo
-Load-SingleStep
+Update-StepState -Step "Hardware" -Status $script:stepStatuses.Hardware
+Update-StepState -Step "Network" -Status $script:stepStatuses.Network
+$planSubtitle.Text = "$($productCombo.SelectedItem) - $($modelCombo.SelectedItem) - Version $($versionCombo.SelectedItem)"
 
 $window.ShowDialog() | Out-Null

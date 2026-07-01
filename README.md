@@ -19,6 +19,7 @@ Herramienta local en PowerShell para validaciones basicas orientadas a servidore
 ├── config/
 │   └── settings.json
 ├── manifests/
+│   ├── assessment-checks.json
 │   └── hardware-requirements.json
 ├── logs/
 └── README.md
@@ -74,7 +75,9 @@ Ejecutar directamente:
 
 Tambien se puede abrir desde el menu principal con la opcion `5. Abrir interfaz grafica`.
 
-La GUI permite seleccionar producto, modelo y version, cargar el paso `01. Validar hardware`, validar fabricante/modelo/SO contra `manifests/hardware-requirements.json`, ver el resultado en pantalla, consultar el progreso general y generar un resumen. En modo pruebas, el paso se marca como completado aunque el servidor no coincida. Al cerrar, guarda el estado de la sesion en `config/session.json`.
+La GUI permite seleccionar producto, modelo y version, cargar los pasos `01. Validar hardware` y `02. Validar red`, validar fabricante/modelo/SO contra `manifests/hardware-requirements.json`, validar adaptadores de red esperados y ver los resultados en pantalla. En modo pruebas, los pasos se marcan como completados aunque existan advertencias. Al cerrar, guarda el estado de la sesion en `config/session.json`.
+
+El archivo `manifests/assessment-checks.json` contiene el manifiesto inicial de verificaciones DFE Assessment para Production Pro Commercial 8.3, organizado por categoria.
 
 ## Notas
 

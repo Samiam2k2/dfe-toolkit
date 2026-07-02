@@ -48,6 +48,7 @@ $session = @{
     NetworkStatus = "Pending"
     OperatingSystemStatus = "Pending"
     StorageStatus = "Pending"
+    SecurityStatus = "Pending"
     LastResult = ""
 }
 
@@ -61,6 +62,7 @@ if (Test-Path -Path $sessionPath -PathType Leaf) {
         if ($loadedSession.NetworkStatus) { $session.NetworkStatus = $loadedSession.NetworkStatus }
         if ($loadedSession.OperatingSystemStatus) { $session.OperatingSystemStatus = $loadedSession.OperatingSystemStatus }
         if ($loadedSession.StorageStatus) { $session.StorageStatus = $loadedSession.StorageStatus }
+        if ($loadedSession.SecurityStatus) { $session.SecurityStatus = $loadedSession.SecurityStatus }
         if ($loadedSession.LastResult) { $session.LastResult = $loadedSession.LastResult }
     }
     catch {
@@ -507,6 +509,122 @@ function Invoke-StorageRequirementsValidation {
     }
 }
 
+function Get-ValidateSecurityScriptBlock {
+    [CmdletBinding()]
+    param()
+
+    $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Security.ps1"
+    if (Test-Path -Path $localScript -PathType Leaf) {
+        return @{
+            Command = $localScript
+            IsFile = $true
+        }
+    }
+
+    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-Security.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    } -ErrorAction Stop
+
+    return @{
+        Command = [scriptblock]::Create($scriptContent)
+        IsFile = $false
+    }
+}
+
+function Invoke-SecurityRequirementsValidation {
+    [CmdletBinding()]
+    param(
+        [string]$Product,
+        [string]$Version,
+        [switch]$TestMode
+    )
+
+    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
+    $checkIcon = [char]::ConvertFromUtf32(0x2705)
+    $failIcon = [char]::ConvertFromUtf32(0x274C)
+    $infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
+
+    $validator = Get-ValidateSecurityScriptBlock
+
+    $arguments = @{
+        Product = $Product
+        Version = $Version
+    }
+    if ($TestMode) {
+        $arguments["TestMode"] = $true
+    }
+
+    $result = & $validator.Command @arguments
+
+    $lines = @()
+    $lines += "Validacion de seguridad"
+    $lines += "======================="
+    $lines += "Producto evaluado: $($result.Product) $($result.Version)"
+    
+    $isAdminStr = if ($result.Security.isAdmin) { "si" } else { "no" }
+    $lines += "Administrador: ${isAdminStr}"
+    
+    $uacStr = "desconocido"
+    if ($null -ne $result.Security.uacEnabled) {
+        $uacStr = if ($result.Security.uacEnabled) { "activo" } else { "desactivado" }
+    }
+    $lines += "UAC: ${uacStr}"
+
+    $firewallDetails = @()
+    foreach ($p in @($result.Security.firewallProfiles)) {
+        $nameStr = $p.Name
+        $stateStr = if ($p.Enabled) { "activo" } else { "desactivado" }
+        $firewallDetails += "${nameStr}: ${stateStr}"
+    }
+    if ($firewallDetails.Count -gt 0) {
+        $lines += "Firewall: $($firewallDetails -join '; ')"
+    }
+    else {
+        $lines += "Firewall: sin perfiles detectados"
+    }
+    
+    if ($result.SimulatedSource) {
+        $lines += "  (Origen: datos simulados de laboratorio)"
+    }
+    $lines += ""
+    $lines += "Checks:"
+
+    foreach ($check in @($result.Checks)) {
+        switch ($check.Status) {
+            "Pass" { $icon = $checkIcon }
+            "Fail" { $icon = $failIcon }
+            "Info" { $icon = $infoIcon }
+            default { $icon = $warningIcon }
+        }
+        $lines += "  $icon [$($check.Status)] $($check.Name)"
+        $lines += "      $($check.Detail)"
+    }
+
+    $lines += ""
+    switch ($result.Status) {
+        "Pass" { $lines += "$checkIcon Estado general: Pass." }
+        "Warning" { $lines += "$warningIcon Estado general: Completado con advertencias." }
+        default { $lines += "$failIcon Estado general: Fail." }
+    }
+
+    if ($result.DegradedByMode) {
+        $lines += ""
+        $lines += "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto de hardware para validar contra un servidor real."
+    }
+
+    if ($result.TestModeApplied) {
+        $lines += ""
+        $lines += "Modo pruebas activo: estado general forzado a Pass; los resultados por check reflejan la realidad."
+    }
+
+    return [pscustomobject]@{
+        Text = ($lines -join [Environment]::NewLine)
+        Result = $result
+    }
+}
+
 $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -700,6 +818,27 @@ $xaml = @"
                         </Grid>
                     </Border>
 
+                    <Border x:Name="SecurityStepCard"
+                             Background="#FFFFFF"
+                             BorderBrush="#E5E7EB"
+                             BorderThickness="1"
+                             CornerRadius="7"
+                             Padding="14"
+                             Margin="0,0,0,14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="58" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="160" />
+                                <ColumnDefinition Width="110" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="05" FontSize="18" FontWeight="Bold" Foreground="#0078D4" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="Validar seguridad" FontSize="14" Foreground="#111827" VerticalAlignment="Center" />
+                            <TextBlock x:Name="SecurityStatusText" Grid.Column="2" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Button x:Name="ExecuteSecurityButton" Grid.Column="3" Content="Ejecutar" Width="92" Height="32" HorizontalAlignment="Right" />
+                        </Grid>
+                    </Border>
+
                     <TextBlock Text="Resultado" FontSize="14" FontWeight="SemiBold" Foreground="#374151" Margin="0,6,0,8" />
                     <TextBox x:Name="ResultTextBox"
                              MinHeight="320"
@@ -746,14 +885,17 @@ $hardwareStepCard = $window.FindName("HardwareStepCard")
 $networkStepCard = $window.FindName("NetworkStepCard")
 $operatingSystemStepCard = $window.FindName("OperatingSystemStepCard")
 $storageStepCard = $window.FindName("StorageStepCard")
+$securityStepCard = $window.FindName("SecurityStepCard")
 $hardwareStatusText = $window.FindName("HardwareStatusText")
 $networkStatusText = $window.FindName("NetworkStatusText")
 $operatingSystemStatusText = $window.FindName("OperatingSystemStatusText")
 $storageStatusText = $window.FindName("StorageStatusText")
+$securityStatusText = $window.FindName("SecurityStatusText")
 $executeHardwareButton = $window.FindName("ExecuteHardwareButton")
 $executeNetworkButton = $window.FindName("ExecuteNetworkButton")
 $executeOperatingSystemButton = $window.FindName("ExecuteOperatingSystemButton")
 $executeStorageButton = $window.FindName("ExecuteStorageButton")
+$executeSecurityButton = $window.FindName("ExecuteSecurityButton")
 $resultTextBox = $window.FindName("ResultTextBox")
 $progressBar = $window.FindName("MainProgressBar")
 $progressLabel = $window.FindName("ProgressLabel")
@@ -800,11 +942,19 @@ $storageShadow.ShadowDepth = 1
 $storageShadow.Opacity = 0.16
 $storageStepCard.Effect = $storageShadow
 
+$securityShadow = New-Object Windows.Media.Effects.DropShadowEffect
+$securityShadow.Color = [Windows.Media.Color]::FromRgb(0, 0, 0)
+$securityShadow.BlurRadius = 12
+$securityShadow.ShadowDepth = 1
+$securityShadow.Opacity = 0.16
+$securityStepCard.Effect = $securityShadow
+
 $script:stepStatuses = @{
     Hardware = $session.HardwareStatus
     Network = $session.NetworkStatus
     OperatingSystem = $session.OperatingSystemStatus
     Storage = $session.StorageStatus
+    Security = $session.SecurityStatus
 }
 
 function Save-Session {
@@ -816,6 +966,7 @@ function Save-Session {
         NetworkStatus = $script:stepStatuses.Network
         OperatingSystemStatus = $script:stepStatuses.OperatingSystem
         StorageStatus = $script:stepStatuses.Storage
+        SecurityStatus = $script:stepStatuses.Security
         LastResult = $resultTextBox.Text
         SavedAt = (Get-Date).ToString("s")
     }
@@ -851,6 +1002,10 @@ function Update-StepState {
     elseif ($Step -eq "Storage") {
         $statusText = $storageStatusText
         $button = $executeStorageButton
+    }
+    elseif ($Step -eq "Security") {
+        $statusText = $securityStatusText
+        $button = $executeSecurityButton
     }
     else {
         $statusText = $networkStatusText
@@ -903,12 +1058,14 @@ function Load-Steps {
     $script:stepStatuses.Network = "Pending"
     $script:stepStatuses.OperatingSystem = "Pending"
     $script:stepStatuses.Storage = "Pending"
+    $script:stepStatuses.Security = "Pending"
     $resultTextBox.Text = ""
     $planSubtitle.Text = "$($productCombo.SelectedItem) - $($modelCombo.SelectedItem) - Version $($versionCombo.SelectedItem)"
     Update-StepState -Step "Hardware" -Status "Pending"
     Update-StepState -Step "Network" -Status "Pending"
     Update-StepState -Step "OperatingSystem" -Status "Pending"
     Update-StepState -Step "Storage" -Status "Pending"
+    Update-StepState -Step "Security" -Status "Pending"
     Save-Session
 }
 
@@ -1086,9 +1243,43 @@ function Invoke-StorageValidation {
     $timer.Start()
 }
 
+function Invoke-SecurityValidation {
+    Update-StepState -Step "Security" -Status "Running"
+    $resultTextBox.Text = "Ejecutando validacion de seguridad..."
+
+    $script:securityProduct = [string]$productCombo.SelectedItem
+    $script:securityVersion = [string]$versionCombo.SelectedItem
+
+    $timer = New-Object Windows.Threading.DispatcherTimer
+    $timer.Interval = [TimeSpan]::FromMilliseconds(120)
+    $timer.Add_Tick({
+        param($timerSender, $timerArgs)
+
+        $timerSender.Stop()
+
+        try {
+            $validation = Invoke-SecurityRequirementsValidation -Product $script:securityProduct -Version $script:securityVersion
+            $resultTextBox.Text = $validation.Text
+
+            switch ($validation.Result.Status) {
+                "Pass" { Update-StepState -Step "Security" -Status "Completed" }
+                "Warning" { Update-StepState -Step "Security" -Status "Warning" }
+                default { Update-StepState -Step "Security" -Status "Failed" }
+            }
+        }
+        catch {
+            $resultTextBox.Text = "Error al ejecutar la validacion de seguridad:`r`n$($_.Exception.Message)"
+            Update-StepState -Step "Security" -Status "Failed"
+        }
+
+        Save-Session
+    })
+    $timer.Start()
+}
+
 
 function Show-Report {
-    $message = "Reporte DFE-Toolkit`n`nProducto: $($productCombo.SelectedItem)`nModelo: $($modelCombo.SelectedItem)`nVersion: $($versionCombo.SelectedItem)`nPaso 01 - Validar hardware: $(Get-StatusText -Status $script:stepStatuses.Hardware)`nPaso 02 - Validar red: $(Get-StatusText -Status $script:stepStatuses.Network)`nPaso 03 - Validar sistema operativo: $(Get-StatusText -Status $script:stepStatuses.OperatingSystem)`nPaso 04 - Validar almacenamiento: $(Get-StatusText -Status $script:stepStatuses.Storage)"
+    $message = "Reporte DFE-Toolkit`n`nProducto: $($productCombo.SelectedItem)`nModelo: $($modelCombo.SelectedItem)`nVersion: $($versionCombo.SelectedItem)`nPaso 01 - Validar hardware: $(Get-StatusText -Status $script:stepStatuses.Hardware)`nPaso 02 - Validar red: $(Get-StatusText -Status $script:stepStatuses.Network)`nPaso 03 - Validar sistema operativo: $(Get-StatusText -Status $script:stepStatuses.OperatingSystem)`nPaso 04 - Validar almacenamiento: $(Get-StatusText -Status $script:stepStatuses.Storage)`nPaso 05 - Validar seguridad: $(Get-StatusText -Status $script:stepStatuses.Security)"
     [Windows.MessageBox]::Show($message, "Reporte DFE-Toolkit", "OK", "Information") | Out-Null
 }
 
@@ -1131,6 +1322,10 @@ $executeStorageButton.Add_Click({
     Invoke-StorageValidation
 })
 
+$executeSecurityButton.Add_Click({
+    Invoke-SecurityValidation
+})
+
 $reportButton.Add_Click({
     Show-Report
 })
@@ -1144,6 +1339,7 @@ Update-StepState -Step "Hardware" -Status $script:stepStatuses.Hardware
 Update-StepState -Step "Network" -Status $script:stepStatuses.Network
 Update-StepState -Step "OperatingSystem" -Status $script:stepStatuses.OperatingSystem
 Update-StepState -Step "Storage" -Status $script:stepStatuses.Storage
+Update-StepState -Step "Security" -Status $script:stepStatuses.Security
 $planSubtitle.Text = "$($productCombo.SelectedItem) - $($modelCombo.SelectedItem) - Version $($versionCombo.SelectedItem)"
 
 $window.ShowDialog() | Out-Null

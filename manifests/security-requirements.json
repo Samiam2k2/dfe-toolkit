@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.0",
+  "notes": "TODO: Los criterios para UAC y perfiles de firewall son informativos hasta definir lineamientos oficiales. Solo adminPrivileges.required es restrictivo.",
+  "adminPrivileges": {
+    "required": true
+  },
+  "uac": {
+    "expectedState": null,
+    "notes": "TODO: definir criterio UAC oficial. null = informativo, solo reporta estado."
+  },
+  "firewall": {
+    "expectedProfiles": null,
+    "notes": "TODO: definir criterio de perfiles de firewall. null = informativo, solo reporta estado."
+  }
+}

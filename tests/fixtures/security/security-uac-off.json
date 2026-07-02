@@ -1,0 +1,20 @@
+{
+  "description": "Servidor con privilegios de administrador y UAC desactivado. check-uac-policy es Info (neuter), por lo que el Estado general esperado sigue siendo Pass.",
+  "expectedStatus": "Pass",
+  "isAdmin": true,
+  "uacEnabled": false,
+  "firewallProfiles": [
+    {
+      "name": "Domain",
+      "enabled": true
+    },
+    {
+      "name": "Private",
+      "enabled": true
+    },
+    {
+      "name": "Public",
+      "enabled": true
+    }
+  ]
+}

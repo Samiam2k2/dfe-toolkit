@@ -1,0 +1,20 @@
+{
+  "description": "Servidor seguro con privilegios de administrador, UAC activo y todos los perfiles de firewall habilitados. Estado general esperado: Pass.",
+  "expectedStatus": "Pass",
+  "isAdmin": true,
+  "uacEnabled": true,
+  "firewallProfiles": [
+    {
+      "name": "Domain",
+      "enabled": true
+    },
+    {
+      "name": "Private",
+      "enabled": true
+    },
+    {
+      "name": "Public",
+      "enabled": true
+    }
+  ]
+}

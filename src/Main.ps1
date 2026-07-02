@@ -433,6 +433,123 @@ function Test-DFEStorage {
     }
 }
 
+function Get-ValidateSecurityCommand {
+    [CmdletBinding()]
+    param()
+
+    $localScript = $null
+    if ($PSScriptRoot) {
+        $projectRoot = Split-Path -Parent $PSScriptRoot
+        $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Security.ps1"
+    }
+
+    if ($localScript -and (Test-Path -Path $localScript -PathType Leaf)) {
+        return @{
+            Command = $localScript
+            IsFile = $true
+        }
+    }
+
+    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-Security.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    } -ErrorAction Stop
+
+    return @{
+        Command = [scriptblock]::Create($scriptContent)
+        IsFile = $false
+    }
+}
+
+function Test-DFESecurity {
+    [CmdletBinding()]
+    param(
+        [string]$Product = "Production Pro",
+        [string]$Version = "8.3"
+    )
+
+    $passIcon = [char]::ConvertFromUtf32(0x2705)
+    $failIcon = [char]::ConvertFromUtf32(0x274C)
+    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
+    $infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
+
+    Write-Host ""
+    Write-Host "Validacion de seguridad" -ForegroundColor Cyan
+    Write-Host "-----------------------" -ForegroundColor Gray
+    Write-Host "Evaluando privilegios de administrador, UAC y perfiles de firewall para $Product $Version."
+    Write-Host ""
+
+    try {
+        $validator = Get-ValidateSecurityCommand
+        $result = & $validator.Command -Product $Product -Version $Version
+    }
+    catch {
+        Write-Host "No se pudo ejecutar la validacion de seguridad: $($_.Exception.Message)" -ForegroundColor Red
+        return
+    }
+
+    $isAdminStr = if ($result.Security.isAdmin) { "si" } else { "no" }
+    Write-Host "Estado de seguridad detectado:"
+    Write-Host "   Administrador: ${isAdminStr}"
+    
+    $uacStr = "desconocido"
+    if ($null -ne $result.Security.uacEnabled) {
+        $uacStr = if ($result.Security.uacEnabled) { "activo" } else { "desactivado" }
+    }
+    Write-Host "   UAC: ${uacStr}"
+
+    $firewallDetails = @()
+    foreach ($p in @($result.Security.firewallProfiles)) {
+        $nameStr = $p.Name
+        $stateStr = if ($p.Enabled) { "activo" } else { "desactivado" }
+        $firewallDetails += "${nameStr}: ${stateStr}"
+    }
+    if ($firewallDetails.Count -gt 0) {
+        Write-Host "   Firewall: $($firewallDetails -join '; ')"
+    }
+    else {
+        Write-Host "   Firewall: sin perfiles detectados"
+    }
+    Write-Host ""
+
+    foreach ($check in @($result.Checks)) {
+        switch ($check.Status) {
+            "Pass" {
+                Write-Host "$passIcon [$($check.Status)] $($check.Name)" -ForegroundColor Green
+            }
+            "Fail" {
+                Write-Host "$failIcon [$($check.Status)] $($check.Name)" -ForegroundColor Red
+            }
+            "Info" {
+                Write-Host "$infoIcon [$($check.Status)] $($check.Name)" -ForegroundColor Cyan
+            }
+            default {
+                Write-Host "$warningIcon [$($check.Status)] $($check.Name)" -ForegroundColor Yellow
+            }
+        }
+        Write-Host "      $($check.Detail)" -ForegroundColor Gray
+    }
+
+    Write-Host ""
+    switch ($result.Status) {
+        "Pass" {
+            Write-Host "Resultado: $passIcon seguridad conforme (Pass)." -ForegroundColor Green
+        }
+        "Warning" {
+            Write-Host "Resultado: $warningIcon seguridad completada con advertencias (Warning)." -ForegroundColor Yellow
+        }
+        default {
+            Write-Host "Resultado: $failIcon seguridad no conforme (Fail)." -ForegroundColor Red
+        }
+    }
+
+    if ($result.DegradedByMode) {
+        Write-Host ""
+        Write-Host "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto de hardware para validar contra un servidor real." -ForegroundColor Yellow
+    }
+}
+
 function Show-DemoSummary {
     [CmdletBinding()]
     param()
@@ -450,6 +567,7 @@ function Show-DemoSummary {
     Write-Host "$checkIcon Verificaci$($oAcuteLower)n de hardware: COMPLETADA" -ForegroundColor Green
     Write-Host "$checkIcon Verificaci$($oAcuteLower)n de red: COMPLETADA" -ForegroundColor Green
     Write-Host "$checkIcon Verificaci$($oAcuteLower)n de almacenamiento: COMPLETADA" -ForegroundColor Green
+    Write-Host "$checkIcon Verificaci$($oAcuteLower)n de seguridad: COMPLETADA" -ForegroundColor Green
     Write-Host "$pendingIcon Instalaci$($oAcuteLower)n de prerequisitos: PENDIENTE (modo demo)" -ForegroundColor Yellow
     Write-Host "$pendingIcon Instalaci$($oAcuteLower)n de software principal: PENDIENTE (modo demo)" -ForegroundColor Yellow
     Write-Host "$ideaIcon Este es un modo de demostraci$($oAcuteLower)n." -ForegroundColor Cyan
@@ -467,9 +585,10 @@ function Show-Menu {
         Write-Host "2. Validar Red"
         Write-Host "3. Validar Sistema Operativo"
         Write-Host "4. Validar Almacenamiento"
-        Write-Host "5. Salir"
-        Write-Host "6. Ver resumen de instalacion"
-        Write-Host "7. Abrir interfaz grafica"
+        Write-Host "5. Validar Seguridad"
+        Write-Host "6. Salir"
+        Write-Host "7. Ver resumen de instalacion"
+        Write-Host "8. Abrir interfaz grafica"
         Write-Host ""
 
         $option = Read-Host "Seleccione una opcion"
@@ -489,19 +608,22 @@ function Show-Menu {
                 Test-DFEStorage
             }
             "5" {
-                Write-Host "Saliendo de DFE Toolkit."
+                Test-DFESecurity
             }
             "6" {
-                Show-DemoSummary
+                Write-Host "Saliendo de DFE Toolkit."
             }
             "7" {
+                Show-DemoSummary
+            }
+            "8" {
                 Invoke-DFEGui
             }
             default {
                 Write-Host "Opcion invalida. Intente nuevamente." -ForegroundColor Yellow
             }
         }
-    } while ($option -ne "5")
+    } while ($option -ne "6")
 }
 
 function Invoke-DFEGui {

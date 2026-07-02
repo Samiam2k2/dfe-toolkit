@@ -163,11 +163,15 @@ function Invoke-HardwareRequirementsValidation {
     }
 
     $lines += ""
-    if ($result.Status -eq "Pass") {
-        $lines += "$checkIcon Estado general: Pass."
+    switch ($result.Status) {
+        "Pass" { $lines += "$checkIcon Estado general: Pass." }
+        "Warning" { $lines += "$warningIcon Estado general: Completado con advertencias." }
+        default { $lines += "$failIcon Estado general: Fail." }
     }
-    else {
-        $lines += "$failIcon Estado general: Fail."
+
+    if ($result.DegradedByMode) {
+        $lines += ""
+        $lines += "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto para validar contra un servidor real."
     }
 
     if ($result.TestModeApplied) {
@@ -646,11 +650,10 @@ function Invoke-HardwareValidation {
             $validation = Invoke-HardwareRequirementsValidation -Product $script:hardwareProduct -Version $script:hardwareVersion
             $resultTextBox.Text = $validation.Text
 
-            if ($validation.Result.Status -eq "Pass") {
-                Update-StepState -Step "Hardware" -Status "Completed"
-            }
-            else {
-                Update-StepState -Step "Hardware" -Status "Failed"
+            switch ($validation.Result.Status) {
+                "Pass" { Update-StepState -Step "Hardware" -Status "Completed" }
+                "Warning" { Update-StepState -Step "Hardware" -Status "Warning" }
+                default { Update-StepState -Step "Hardware" -Status "Failed" }
             }
         }
         catch {

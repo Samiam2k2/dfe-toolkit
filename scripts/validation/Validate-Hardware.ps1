@@ -29,9 +29,10 @@
     Si se especifica, el Status general se fuerza a Pass y se agrega
     TestModeApplied=true, dejando visibles los resultados reales por check.
 .OUTPUTS
-    [pscustomobject] con: Status, TestModeApplied, Product, Version,
-    Manufacturer, Model, OperatingSystem, MemoryGB, CpuSockets, CpuCores,
-    Checks (arreglo de objetos Id/Name/Status/Detail/Blocking).
+    [pscustomobject] con: Status, RealStatus, ValidationMode, DegradedByMode,
+    TestModeApplied, Product, Version, Manufacturer, Model, OperatingSystem,
+    MemoryGB, CpuSockets, CpuCores, Checks (arreglo de objetos
+    Id/Name/Status/Detail/Blocking).
 #>
 
 [CmdletBinding()]
@@ -389,15 +390,47 @@ else {
 }
 
 # --- Estado general ---
+# Orden: RealStatus (enforcing) -> degradacion por validationMode -> TestMode.
+
+# validationMode del manifiesto. Default "enforcing" si el campo no existe, para
+# no alterar el comportamiento de manifiestos viejos.
+$validationMode = "enforcing"
+if ($requirements.validationMode) {
+    $validationMode = [string]$requirements.validationMode
+}
+
+# Fase a) RealStatus con logica enforcing (alineada con Validate-Network.ps1):
+# Fail si algun check bloqueante da Fail; Warning si sin Fails bloqueantes hay al
+# menos un Warning o un Fail no bloqueante; Pass si todo Pass.
 $realStatus = "Pass"
+$hasBlockingFail = $false
+$hasWarningOrNonBlockingFail = $false
 foreach ($check in $checks) {
-    if ($check.Blocking -and $check.Status -eq "Fail") {
-        $realStatus = "Fail"
-        break
+    if ($check.Status -eq "Fail" -and $check.Blocking) {
+        $hasBlockingFail = $true
+    }
+    elseif ($check.Status -eq "Warning" -or $check.Status -eq "Fail") {
+        $hasWarningOrNonBlockingFail = $true
     }
 }
 
+if ($hasBlockingFail) {
+    $realStatus = "Fail"
+}
+elseif ($hasWarningOrNonBlockingFail) {
+    $realStatus = "Warning"
+}
+
+# Fase b) En modo informational, un Fail real se degrada a Warning. RealStatus
+# SIEMPRE conserva el valor sin degradar para dejar el rastro honesto.
 $finalStatus = $realStatus
+$degradedByMode = $false
+if ($validationMode -eq "informational" -and $realStatus -eq "Fail") {
+    $finalStatus = "Warning"
+    $degradedByMode = $true
+}
+
+# Fase c) -TestMode se aplica encima al final: fuerza Status a Pass.
 $testModeApplied = $false
 if ($TestMode) {
     $testModeApplied = $true
@@ -407,6 +440,8 @@ if ($TestMode) {
 $result = [pscustomobject]@{
     Status = $finalStatus
     RealStatus = $realStatus
+    ValidationMode = $validationMode
+    DegradedByMode = $degradedByMode
     TestModeApplied = $testModeApplied
     Product = $Product
     Version = $Version

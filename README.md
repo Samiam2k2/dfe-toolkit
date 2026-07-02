@@ -116,6 +116,15 @@ Contra un JSON de sistema simulado (pruebas en laboratorio/VM):
 
 Los minimos de memoria y CPU se leen del bloque `minimumResources` de `manifests/hardware-requirements.json`. Esos valores son placeholder (marcados con `TODO: confirmar contra guia TS1ES-00016`) y deben ajustarse con las cifras oficiales del System Guide antes de promoverse a stable.
 
+### Modo de validacion (`validationMode`)
+
+El campo `validationMode` en la raiz de `manifests/hardware-requirements.json` controla como se calcula el `Status` GENERAL del paso (no cambia la severidad real de cada check, que siempre se muestra tal cual):
+
+- `informational` (valor actual): si algun check bloqueante da `Fail`, el `Status` general se degrada a `Warning` en vez de `Fail`. Pensado para laboratorio/VM sin un servidor DFE real. El objeto de salida incluye `DegradedByMode = $true` y `RealStatus` conserva el `Fail` sin degradar para dejar el rastro honesto.
+- `enforcing`: respeta el `blocking` real de cada check y bloquea con `Fail`. Pensado para validar contra un servidor de produccion.
+
+Es una palanca distinta de `-TestMode`, que fuerza el `Status` a `Pass` (`TestModeApplied = $true`). El orden de aplicacion es: `RealStatus` (enforcing) -> degradacion por `validationMode` -> `-TestMode`. Si el campo no existe en el manifiesto, el default es `enforcing` (no cambia el comportamiento de manifiestos viejos).
+
 ## Validacion de red
 
 `scripts/validation/Validate-Network.ps1` es un script independiente (Windows PowerShell 5.1, sin dependencias) que ejecuta los 5 checks de categoria `network` de `manifests/assessment-checks.json`: `check-network-adapter-names`, `check-network-adapter-state`, `check-network-static-ip`, `check-network-metrics` y `check-hosts-file`. Devuelve al pipeline un objeto con la misma forma que el validador de hardware (`Status`, `RealStatus`, `TestModeApplied`, `Checks`), mas un inventario de adaptadores (`Adapters`) y `SimulatedSource`.

@@ -95,6 +95,45 @@ foreach ($fixture in $fixtures) {
     Write-Host ""
 }
 
+# --- Caso extra: modo enforcing ---
+# El manifiesto por defecto esta en validationMode "informational", que degrada
+# los Fail bloqueantes a Warning. Para no perder cobertura del caso bloqueante,
+# se corre dell-incompatible.json contra un manifiesto de prueba con
+# validationMode "enforcing" y se verifica que ahi SI de Fail (RealStatus Fail).
+$enforcingManifest = Join-Path -Path $fixturesRoot -ChildPath "manifests\hardware-requirements-enforcing.json"
+$dellFixture = Join-Path -Path $fixturesRoot -ChildPath "dell-incompatible.json"
+
+if ((Test-Path -Path $enforcingManifest -PathType Leaf) -and (Test-Path -Path $dellFixture -PathType Leaf)) {
+    $totalCases++
+    $expectedEnforcing = "Fail"
+
+    try {
+        $enforcingResult = & $validatorPath -SystemInfoPath $dellFixture -ManifestPath $enforcingManifest
+        $actualEnforcing = [string]$enforcingResult.Status
+
+        if ($actualEnforcing -eq $expectedEnforcing) {
+            Write-Host "$passIcon dell-incompatible.json (enforcing): esperado=$expectedEnforcing obtenido=$actualEnforcing" -ForegroundColor Green
+        }
+        else {
+            Write-Host "$failIcon dell-incompatible.json (enforcing): esperado=$expectedEnforcing obtenido=$actualEnforcing" -ForegroundColor Red
+            $failedCases++
+        }
+
+        Write-Host "     - RealStatus=$($enforcingResult.RealStatus) ValidationMode=$($enforcingResult.ValidationMode) DegradedByMode=$($enforcingResult.DegradedByMode)" -ForegroundColor DarkGray
+    }
+    catch {
+        Write-Host "$failIcon dell-incompatible.json (enforcing): error al ejecutar el validador: $($_.Exception.Message)" -ForegroundColor Red
+        $failedCases++
+    }
+    Write-Host ""
+}
+else {
+    Write-Host "$failIcon No se encontro el manifiesto enforcing o el fixture dell para el caso extra." -ForegroundColor Red
+    $totalCases++
+    $failedCases++
+    Write-Host ""
+}
+
 Write-Host "---------------------" -ForegroundColor Gray
 $passedCases = $totalCases - $failedCases
 Write-Host "Resumen: $passedCases de $totalCases casos correctos." -ForegroundColor Cyan

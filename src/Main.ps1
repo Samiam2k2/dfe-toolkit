@@ -112,11 +112,21 @@ function Test-DFEHardware {
     }
 
     Write-Host ""
-    if ($result.Status -eq "Pass") {
-        Write-Host "Resultado: $passIcon hardware compatible (Pass)." -ForegroundColor Green
+    switch ($result.Status) {
+        "Pass" {
+            Write-Host "Resultado: $passIcon hardware compatible (Pass)." -ForegroundColor Green
+        }
+        "Warning" {
+            Write-Host "Resultado: $warningIcon hardware con advertencias (Warning)." -ForegroundColor Yellow
+        }
+        default {
+            Write-Host "Resultado: $failIcon hardware no compatible (Fail)." -ForegroundColor Red
+        }
     }
-    else {
-        Write-Host "Resultado: $failIcon hardware no compatible (Fail)." -ForegroundColor Red
+
+    if ($result.DegradedByMode) {
+        Write-Host ""
+        Write-Host "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto para validar contra un servidor real." -ForegroundColor Yellow
     }
 }
 

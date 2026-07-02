@@ -1,6 +1,6 @@
 {
-  "description": "Servidor Dell no soportado. Fabricante y modelo fuera de la lista aprobada (Fail).",
-  "expectedStatus": "Fail",
+  "description": "Servidor Dell no soportado (fabricante y modelo fuera de la lista aprobada). Los checks de fabricante/modelo/generacion dan Fail real, pero como el manifiesto esta en validationMode 'informational' el Status general se degrada de Fail a Warning (RealStatus conserva Fail). En modo 'enforcing' este mismo caso daria Fail.",
+  "expectedStatus": "Warning",
   "manufacturer": "Dell Inc.",
   "model": "PowerEdge R740",
   "osCaption": "Microsoft Windows Server 2019 Standard",

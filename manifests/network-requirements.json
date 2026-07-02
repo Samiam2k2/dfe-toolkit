@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "1.0",
+  "product": "Production Pro Commercial",
+  "version": "8.3",
+  "sourceDocument": "HPI_DFE_Assessment_ReadMe (Appendix C - Prod Pro System Check)",
+  "notes": "Requisitos de red para validacion automatizada del Paso 2. Los blocking de cada check se leen de assessment-checks.json, no se queman aqui.",
+  "expectedAdapters": [
+    {
+      "name": "DataLAN",
+      "interfaceMetric": 40,
+      "requireUp": true,
+      "requireStaticIp": true
+    },
+    {
+      "name": "External LAN",
+      "interfaceMetric": 5,
+      "requireUp": true,
+      "requireStaticIp": true
+    },
+    {
+      "name": "Internal LAN",
+      "interfaceMetric": 40,
+      "requireUp": true,
+      "requireStaticIp": true
+    }
+  ],
+  "hostsFile": {
+    "path": "C:\\Windows\\System32\\drivers\\etc\\hosts",
+    "requiredEntries": [],
+    "notes": "TODO: agregar las entradas requeridas del DFE Assessment. Lista vacia = check informativo."
+  }
+}

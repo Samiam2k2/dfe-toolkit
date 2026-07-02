@@ -1,0 +1,28 @@
+{
+  "description": "Red correctamente configurada: DataLAN/External LAN/Internal LAN activos, IP estatica y metricas 40/5/40. Los checks de adaptadores dan Pass, pero con requiredEntries de hosts vacio el check-hosts-file da Warning, por lo que el Status general es Warning. Pasara a Pass cuando se definan las entradas de hosts en el manifiesto.",
+  "expectedStatus": "Warning",
+  "adapters": [
+    {
+      "name": "DataLAN",
+      "status": "Up",
+      "dhcp": "Disabled",
+      "interfaceMetric": 40,
+      "ipv4Addresses": [ "172.16.216.111" ]
+    },
+    {
+      "name": "External LAN",
+      "status": "Up",
+      "dhcp": "Disabled",
+      "interfaceMetric": 5,
+      "ipv4Addresses": [ "192.168.1.42" ]
+    },
+    {
+      "name": "Internal LAN",
+      "status": "Up",
+      "dhcp": "Disabled",
+      "interfaceMetric": 40,
+      "ipv4Addresses": [ "192.168.101.2" ]
+    }
+  ],
+  "hostsContent": "# Copyright (c) 1993-2009 Microsoft Corp.\n127.0.0.1       localhost\n"
+}

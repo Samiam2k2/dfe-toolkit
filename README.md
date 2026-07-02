@@ -18,19 +18,26 @@ dfe-toolkit/
 │   └── Gui.ps1
 ├── scripts/
 │   └── validation/
-│       └── Validate-Hardware.ps1
+│       ├── Validate-Hardware.ps1
+│       └── Validate-Network.ps1
 ├── tests/
 │   ├── Test-ValidateHardware.ps1
+│   ├── Test-ValidateNetwork.ps1
 │   └── fixtures/
 │       ├── z8-g5-win10.json
 │       ├── proliant-gen10-ws2019.json
 │       ├── z840-win10.json
-│       └── dell-incompatible.json
+│       ├── dell-incompatible.json
+│       └── network/
+│           ├── net-completa.json
+│           ├── net-mala-config.json
+│           └── net-sin-adaptadores.json
 ├── config/
 │   └── settings.json
 ├── manifests/
 │   ├── assessment-checks.json
-│   └── hardware-requirements.json
+│   ├── hardware-requirements.json
+│   └── network-requirements.json
 ├── logs/
 └── README.md
 ```
@@ -87,7 +94,7 @@ Tambien se puede abrir desde el menu principal con la opcion `5. Abrir interfaz 
 
 La GUI permite seleccionar producto, modelo y version, cargar los pasos `01. Validar hardware` y `02. Validar red` y ver los resultados en pantalla. Al cerrar, guarda el estado de la sesion en `config/session.json`.
 
-El paso `01. Validar hardware` delega en `scripts/validation/Validate-Hardware.ps1` (local si existe, si no se descarga de GitHub con cache-bust). El estado del paso (`Completado`/`Fallido`) refleja el `Status` real devuelto por el validador; el modo pruebas ya no es el comportamiento por defecto y solo se aplica si la GUI pasa `-TestMode`.
+Los pasos `01. Validar hardware` y `02. Validar red` delegan en `scripts/validation/Validate-Hardware.ps1` y `scripts/validation/Validate-Network.ps1` respectivamente (local si existe, si no se descarga de GitHub con cache-bust). El estado del paso refleja el `Status` real devuelto por el validador: `Pass` -> `Completado`, `Warning` -> `Completado con advertencias` (cuenta como completado en la barra de progreso), `Fail` -> `Fallido`. El modo pruebas ya no es el comportamiento por defecto y solo se aplica si la GUI pasa `-TestMode`.
 
 El archivo `manifests/assessment-checks.json` contiene el manifiesto inicial de verificaciones DFE Assessment para Production Pro Commercial 8.3, organizado por categoria.
 
@@ -109,12 +116,31 @@ Contra un JSON de sistema simulado (pruebas en laboratorio/VM):
 
 Los minimos de memoria y CPU se leen del bloque `minimumResources` de `manifests/hardware-requirements.json`. Esos valores son placeholder (marcados con `TODO: confirmar contra guia TS1ES-00016`) y deben ajustarse con las cifras oficiales del System Guide antes de promoverse a stable.
 
+## Validacion de red
+
+`scripts/validation/Validate-Network.ps1` es un script independiente (Windows PowerShell 5.1, sin dependencias) que ejecuta los 5 checks de categoria `network` de `manifests/assessment-checks.json`: `check-network-adapter-names`, `check-network-adapter-state`, `check-network-static-ip`, `check-network-metrics` y `check-hosts-file`. Devuelve al pipeline un objeto con la misma forma que el validador de hardware (`Status`, `RealStatus`, `TestModeApplied`, `Checks`), mas un inventario de adaptadores (`Adapters`) y `SimulatedSource`.
+
+Los adaptadores esperados y sus metricas se leen de `manifests/network-requirements.json`; el `name` y el flag `blocking` de cada check se leen de `manifests/assessment-checks.json` (hoy los 5 son `blocking:false`, por lo que el paso es informativo y nunca da `Fail`). El check `check-hosts-file` da `Warning` mientras `requiredEntries` este vacio.
+
+Contra el sistema real:
+
+```powershell
+.\scripts\validation\Validate-Network.ps1
+```
+
+Contra un JSON de red simulada (pruebas en laboratorio/VM):
+
+```powershell
+.\scripts\validation\Validate-Network.ps1 -SystemInfoPath .\tests\fixtures\network\net-completa.json
+```
+
 ## Pruebas
 
-`tests/Test-ValidateHardware.ps1` corre el validador contra los fixtures de `tests/fixtures/`, compara el `Status` esperado vs obtenido y muestra un resumen PASS/FAIL por caso. Sale con codigo distinto de 0 si algun caso falla.
+`tests/Test-ValidateHardware.ps1` y `tests/Test-ValidateNetwork.ps1` corren cada validador contra sus fixtures (`tests/fixtures/` y `tests/fixtures/network/`), comparan el `Status` esperado vs obtenido y muestran un resumen PASS/FAIL por caso. Salen con codigo distinto de 0 si algun caso falla.
 
 ```powershell
 .\tests\Test-ValidateHardware.ps1
+.\tests\Test-ValidateNetwork.ps1
 ```
 
 ## Notas

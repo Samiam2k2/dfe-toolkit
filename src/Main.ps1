@@ -120,38 +120,100 @@ function Test-DFEHardware {
     }
 }
 
-function Test-Network {
+function Get-ValidateNetworkCommand {
     [CmdletBinding()]
     param()
+
+    $localScript = $null
+    if ($PSScriptRoot) {
+        $projectRoot = Split-Path -Parent $PSScriptRoot
+        $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Network.ps1"
+    }
+
+    if ($localScript -and (Test-Path -Path $localScript -PathType Leaf)) {
+        return @{
+            Command = $localScript
+            IsFile = $true
+        }
+    }
+
+    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-Network.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    } -ErrorAction Stop
+
+    return @{
+        Command = [scriptblock]::Create($scriptContent)
+        IsFile = $false
+    }
+}
+
+function Test-DFENetwork {
+    [CmdletBinding()]
+    param()
+
+    $passIcon = [char]::ConvertFromUtf32(0x2705)
+    $failIcon = [char]::ConvertFromUtf32(0x274C)
+    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
 
     Write-Host ""
     Write-Host "Validacion de red" -ForegroundColor Cyan
     Write-Host "-----------------" -ForegroundColor Gray
+    Write-Host "Evaluando adaptadores, IP estatica, metricas y archivo hosts contra el manifiesto."
+    Write-Host ""
 
     try {
-        $adapters = Get-NetAdapter -Physical -ErrorAction Stop | Where-Object { $_.Status -eq "Up" }
-
-        if (-not $adapters) {
-            Write-Host "No se encontraron adaptadores fisicos activos." -ForegroundColor Yellow
-            return
-        }
-
-        foreach ($adapter in $adapters) {
-            $ipAddresses = Get-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue |
-                Where-Object { $_.IPAddress -and $_.IPAddress -notlike "169.254.*" }
-
-            if ($ipAddresses) {
-                foreach ($ip in $ipAddresses) {
-                    Write-Host "   $($adapter.Name): $($ip.IPAddress)"
-                }
-            }
-            else {
-                Write-Host "   $($adapter.Name): sin direccion IPv4 asignada" -ForegroundColor Yellow
-            }
-        }
+        $validator = Get-ValidateNetworkCommand
+        $result = & $validator.Command
     }
     catch {
-        Write-Host "No se pudo validar la red con Get-NetAdapter: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "No se pudo ejecutar la validacion de red: $($_.Exception.Message)" -ForegroundColor Red
+        return
+    }
+
+    Write-Host "Adaptadores:"
+    Write-Host "   Esperados: $($result.Adapters.Expected -join ', ')"
+    if ($result.Adapters.MissingExpected.Count -gt 0) {
+        Write-Host "   Faltantes: $($result.Adapters.MissingExpected -join ', ')" -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "   Faltantes: ninguno"
+    }
+    if ($result.Adapters.Unexpected.Count -gt 0) {
+        Write-Host "   No esperados: $($result.Adapters.Unexpected -join ', ')"
+    }
+    else {
+        Write-Host "   No esperados: ninguno"
+    }
+    Write-Host ""
+
+    foreach ($check in @($result.Checks)) {
+        switch ($check.Status) {
+            "Pass" {
+                Write-Host "$passIcon [$($check.Status)] $($check.Name)" -ForegroundColor Green
+            }
+            "Fail" {
+                Write-Host "$failIcon [$($check.Status)] $($check.Name)" -ForegroundColor Red
+            }
+            default {
+                Write-Host "$warningIcon [$($check.Status)] $($check.Name)" -ForegroundColor Yellow
+            }
+        }
+        Write-Host "      $($check.Detail)" -ForegroundColor Gray
+    }
+
+    Write-Host ""
+    switch ($result.Status) {
+        "Pass" {
+            Write-Host "Resultado: $passIcon red conforme (Pass)." -ForegroundColor Green
+        }
+        "Warning" {
+            Write-Host "Resultado: $warningIcon red completada con advertencias (Warning)." -ForegroundColor Yellow
+        }
+        default {
+            Write-Host "Resultado: $failIcon red no conforme (Fail)." -ForegroundColor Red
+        }
     }
 }
 
@@ -199,7 +261,7 @@ function Show-Menu {
                 Test-DFEHardware
             }
             "2" {
-                Test-Network
+                Test-DFENetwork
             }
             "3" {
                 Write-Host "Saliendo de DFE Toolkit."

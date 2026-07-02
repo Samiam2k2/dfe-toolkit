@@ -1,0 +1,28 @@
+{
+  "description": "Los 3 adaptadores esperados estan presentes y activos, pero con DHCP activo (no IP estatica) y metricas incorrectas. check-network-static-ip y check-network-metrics dan Warning; como ningun check es bloqueante, el Status general es Warning.",
+  "expectedStatus": "Warning",
+  "adapters": [
+    {
+      "name": "DataLAN",
+      "status": "Up",
+      "dhcp": "Enabled",
+      "interfaceMetric": 10,
+      "ipv4Addresses": [ "172.16.216.111" ]
+    },
+    {
+      "name": "External LAN",
+      "status": "Up",
+      "dhcp": "Enabled",
+      "interfaceMetric": 25,
+      "ipv4Addresses": [ "192.168.1.42" ]
+    },
+    {
+      "name": "Internal LAN",
+      "status": "Up",
+      "dhcp": "Enabled",
+      "interfaceMetric": 15,
+      "ipv4Addresses": [ "192.168.101.2" ]
+    }
+  ],
+  "hostsContent": "127.0.0.1       localhost\n"
+}

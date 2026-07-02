@@ -1,0 +1,14 @@
+{
+  "description": "VM de laboratorio: solo un adaptador Ethernet0 con DHCP. Faltan DataLAN/External LAN/Internal LAN, por lo que todos los checks de adaptadores dan Warning. Ningun check es bloqueante, asi que el Status general es Warning (refleja el entorno de laboratorio, no un servidor DFE real).",
+  "expectedStatus": "Warning",
+  "adapters": [
+    {
+      "name": "Ethernet0",
+      "status": "Up",
+      "dhcp": "Enabled",
+      "interfaceMetric": 25,
+      "ipv4Addresses": [ "10.0.0.15" ]
+    }
+  ],
+  "hostsContent": "127.0.0.1       localhost\n"
+}

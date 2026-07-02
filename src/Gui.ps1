@@ -35,6 +35,7 @@ if (-not (Test-Path -Path $configRoot -PathType Container)) {
 $statusIcons = @{
     Pending = [char]::ConvertFromUtf32(0x23F3)
     Completed = [char]::ConvertFromUtf32(0x2705)
+    Warning = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
     Failed = [char]::ConvertFromUtf32(0x274C)
     Running = [char]::ConvertFromUtf32(0x25B6) + [char]0xFE0F
 }
@@ -79,6 +80,7 @@ function Get-StatusText {
 
     switch ($Status) {
         "Completed" { return "$($statusIcons.Completed) Completado" }
+        "Warning" { return "$($statusIcons.Warning) Completado con advertencias" }
         "Failed" { return "$($statusIcons.Failed) Fallido" }
         "Running" { return "$($statusIcons.Running) En ejecucion..." }
         default { return "$($statusIcons.Pending) Pendiente" }
@@ -181,96 +183,102 @@ function Invoke-HardwareRequirementsValidation {
     }
 }
 
-function Invoke-NetworkRequirementsValidation {
+function Get-ValidateNetworkScriptBlock {
     [CmdletBinding()]
     param()
 
-    $networkIcon = [char]::ConvertFromUtf32(0x1F310)
+    $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Network.ps1"
+    if (Test-Path -Path $localScript -PathType Leaf) {
+        return @{
+            Command = $localScript
+            IsFile = $true
+        }
+    }
+
+    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-Network.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    } -ErrorAction Stop
+
+    return @{
+        Command = [scriptblock]::Create($scriptContent)
+        IsFile = $false
+    }
+}
+
+function Invoke-NetworkRequirementsValidation {
+    [CmdletBinding()]
+    param(
+        [switch]$TestMode
+    )
+
+    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
     $checkIcon = [char]::ConvertFromUtf32(0x2705)
     $failIcon = [char]::ConvertFromUtf32(0x274C)
-    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
 
-    $expectedAdapters = @(
-        @{ Name = "DataLAN"; Metric = 40 },
-        @{ Name = "External LAN"; Metric = 5 },
-        @{ Name = "Internal LAN"; Metric = 40 }
-    )
-    $expectedAdapterNames = @($expectedAdapters | ForEach-Object { $_.Name })
+    $validator = Get-ValidateNetworkScriptBlock
 
-    $physicalAdapters = @(Get-NetAdapter -Physical -ErrorAction Stop)
-    $foundExpected = @()
-    $missingExpected = @()
-
-    Write-Output "$networkIcon Validacion de red"
-    Write-Output "====================="
-    Write-Output ""
-    Write-Output "**Adaptadores esperados (segun documento):**"
-
-    foreach ($expected in $expectedAdapters) {
-        $adapter = $physicalAdapters | Where-Object { $_.Name -eq $expected.Name } | Select-Object -First 1
-
-        if (-not $adapter) {
-            $missingExpected += $expected.Name
-            Write-Output "- $($expected.Name): $failIcon No encontrado (se esperaba un adaptador con este nombre)"
-            continue
-        }
-
-        $foundExpected += $expected.Name
-        $ipInterface = Get-NetIPInterface -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Select-Object -First 1
-        $ipAddresses = @(Get-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object {
-            $_.IPAddress -and $_.IPAddress -notlike "169.254.*"
-        })
-
-        $ipText = if ($ipAddresses.Count -gt 0) { ($ipAddresses.IPAddress -join ", ") } else { "sin IPv4" }
-        $isUp = ($adapter.Status -eq "Up")
-        $isStatic = ($ipInterface -and [string]$ipInterface.Dhcp -eq "Disabled")
-        $metric = if ($ipInterface) { [int]$ipInterface.InterfaceMetric } else { $null }
-        $metricOk = ($null -ne $metric -and $metric -eq [int]$expected.Metric)
-
-        $details = @()
-        $details += if ($isUp) { "Up" } else { "Estado: $($adapter.Status)" }
-        $details += "IP: $ipText"
-        $details += if ($isStatic) { "IP estatica" } else { "DHCP activo o no confirmado" }
-        $details += if ($metricOk) { "Metrica: $metric correcta" } else { "Metrica: $metric; esperada: $($expected.Metric)" }
-
-        if ($isUp -and $isStatic -and $metricOk -and $ipAddresses.Count -gt 0) {
-            Write-Output "- $($expected.Name): $checkIcon Encontrado ($($details -join ', '))"
-        }
-        else {
-            Write-Output "- $($expected.Name): $warningIcon Encontrado con advertencias ($($details -join ', '))"
-        }
+    $arguments = @{}
+    if ($TestMode) {
+        $arguments["TestMode"] = $true
     }
 
-    Write-Output ""
-    Write-Output "**Adaptadores reales no esperados:**"
-    $unexpectedAdapters = @($physicalAdapters | Where-Object { $expectedAdapterNames -notcontains $_.Name })
+    $result = & $validator.Command @arguments
 
-    if ($unexpectedAdapters.Count -eq 0) {
-        Write-Output "- Ninguno"
+    $lines = @()
+    $lines += "Validacion de red"
+    $lines += "================="
+    if ($result.SimulatedSource) {
+        $lines += "(Origen: datos simulados de laboratorio)"
+        $lines += ""
+    }
+
+    $lines += "Adaptadores:"
+    $lines += "  Esperados: $($result.Adapters.Expected -join ', ')"
+    if ($result.Adapters.MissingExpected.Count -gt 0) {
+        $lines += "  Faltantes: $($result.Adapters.MissingExpected -join ', ')"
     }
     else {
-        foreach ($adapter in $unexpectedAdapters) {
-            $ipAddresses = @(Get-NetIPAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | Where-Object {
-                $_.IPAddress -and $_.IPAddress -notlike "169.254.*"
-            })
-            $ipText = if ($ipAddresses.Count -gt 0) { ($ipAddresses.IPAddress -join ", ") } else { "sin IPv4" }
-            Write-Output "- $($adapter.Name) ($($adapter.Status), IP: $ipText)"
-        }
+        $lines += "  Faltantes: ninguno"
     }
-
-    Write-Output ""
-    if ($foundExpected.Count -eq 0) {
-        Write-Output "**Resumen:** $warningIcon No se encontraron adaptadores con los nombres esperados."
-    }
-    elseif ($missingExpected.Count -gt 0) {
-        Write-Output "**Resumen:** $warningIcon Configuracion parcialmente correcta. Falta $($missingExpected -join ', ')."
+    if ($result.Adapters.Unexpected.Count -gt 0) {
+        $lines += "  No esperados: $($result.Adapters.Unexpected -join ', ')"
     }
     else {
-        Write-Output "**Resumen:** $checkIcon Se encontraron todos los adaptadores esperados. Revise advertencias de estado, DHCP o metrica si aparecen arriba."
+        $lines += "  No esperados: ninguno"
+    }
+    $lines += ""
+    $lines += "Checks:"
+
+    foreach ($check in @($result.Checks)) {
+        switch ($check.Status) {
+            "Pass" { $icon = $checkIcon }
+            "Fail" { $icon = $failIcon }
+            default { $icon = $warningIcon }
+        }
+        $lines += "  $icon [$($check.Status)] $($check.Name)"
+        $lines += "      $($check.Detail)"
     }
 
-    Write-Output ""
-    Write-Output "Modo pruebas: este paso se marcara como Completado aunque existan advertencias."
+    $lines += ""
+    switch ($result.Status) {
+        "Pass" { $lines += "$checkIcon Estado general: Pass." }
+        "Warning" { $lines += "$warningIcon Estado general: Completado con advertencias." }
+        default { $lines += "$failIcon Estado general: Fail." }
+    }
+
+    if ($result.TestModeApplied) {
+        $lines += ""
+        $lines += "Modo pruebas activo: estado general forzado a Pass; los resultados por check reflejan la realidad."
+    }
+
+    # Se adjunta el objeto de resultado como ultimo elemento para que el llamador
+    # pueda leer el Status real sin re-parsear el texto.
+    return [pscustomobject]@{
+        Text = ($lines -join [Environment]::NewLine)
+        Result = $result
+    }
 }
 
 $xaml = @"
@@ -524,7 +532,8 @@ function Save-Session {
 }
 
 function Update-Progress {
-    $completed = @($script:stepStatuses.Values | Where-Object { $_ -eq "Completed" }).Count
+    # Warning cuenta como paso completado (completado con advertencias).
+    $completed = @($script:stepStatuses.Values | Where-Object { $_ -eq "Completed" -or $_ -eq "Warning" }).Count
     $percent = [math]::Round(($completed / 2) * 100, 0)
     $progressBar.Value = $percent
     $progressLabel.Text = "Progreso general: $percent% ($completed de 2 pasos completados)"
@@ -554,6 +563,9 @@ function Update-StepState {
     switch ($Status) {
         "Completed" {
             $statusText.Foreground = "#15803D"
+        }
+        "Warning" {
+            $statusText.Foreground = "#B45309"
         }
         "Failed" {
             $statusText.Foreground = "#B91C1C"
@@ -663,13 +675,20 @@ function Invoke-NetworkValidation {
         $timerSender.Stop()
 
         try {
-            $output = Invoke-NetworkRequirementsValidation 2>&1 | Out-String
-            $resultTextBox.Text = $output.Trim()
-            Update-StepState -Step "Network" -Status "Completed"
+            # El comportamiento por defecto ya no es modo pruebas: se refleja el
+            # estado real. Para forzar Pass, agregar -TestMode a esta llamada.
+            $validation = Invoke-NetworkRequirementsValidation
+            $resultTextBox.Text = $validation.Text
+
+            switch ($validation.Result.Status) {
+                "Pass" { Update-StepState -Step "Network" -Status "Completed" }
+                "Warning" { Update-StepState -Step "Network" -Status "Warning" }
+                default { Update-StepState -Step "Network" -Status "Failed" }
+            }
         }
         catch {
-            $resultTextBox.Text = "Error al ejecutar la validacion de red:`r`n$($_.Exception.Message)`r`n`r`nModo pruebas: el paso se marca como Completado para permitir continuar."
-            Update-StepState -Step "Network" -Status "Completed"
+            $resultTextBox.Text = "Error al ejecutar la validacion de red:`r`n$($_.Exception.Message)"
+            Update-StepState -Step "Network" -Status "Failed"
         }
 
         Save-Session

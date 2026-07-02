@@ -14,6 +14,12 @@
       "version": "8.3",
       "model": "commercial",
       "displayName": "Production Pro 8.3 Commercial",
+      "minimumResources": {
+        "memoryGBMin": 64,
+        "cpuSocketsMin": 1,
+        "cpuCoresMin": 8,
+        "notes": "TODO: confirmar contra guia TS1ES-00016. Valores placeholder, NO son oficiales; ajustar memoryGBMin/cpuSocketsMin/cpuCoresMin con las cifras reales del System Guide antes de promover a stable."
+      },
       "rules": {
         "newInstallation": {
           "description": "Hardware and operating system combinations listed for new installations.",

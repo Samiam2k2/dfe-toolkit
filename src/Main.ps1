@@ -33,44 +33,90 @@ function Get-SystemInfo {
     }
 }
 
-function Test-DFEServer {
+function Get-ValidateHardwareCommand {
     [CmdletBinding()]
     param()
 
-    $dfeIndicators = @(
-        @{Name="Indigo"; Path="HKLM:\SOFTWARE\Indigo"},
-        @{Name="HP DFE"; Path="HKLM:\SOFTWARE\HP\DFE"},
-        @{Name="Production Pro"; Path="HKLM:\SOFTWARE\HP\ProductionPro"},
-        @{Name="Matrix"; Path="HKLM:\SOFTWARE\Wow6432Node\Indigo\Matrix"},
-        @{Name="ProdFlow"; Path="C:\prodflow"}
+    $localScript = $null
+    if ($PSScriptRoot) {
+        $projectRoot = Split-Path -Parent $PSScriptRoot
+        $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Hardware.ps1"
+    }
+
+    if ($localScript -and (Test-Path -Path $localScript -PathType Leaf)) {
+        return @{
+            Command = $localScript
+            IsFile = $true
+        }
+    }
+
+    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-Hardware.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    } -ErrorAction Stop
+
+    return @{
+        Command = [scriptblock]::Create($scriptContent)
+        IsFile = $false
+    }
+}
+
+function Test-DFEHardware {
+    [CmdletBinding()]
+    param(
+        [string]$Product = "Production Pro",
+        [string]$Version = "8.3"
     )
 
+    $passIcon = [char]::ConvertFromUtf32(0x2705)
+    $failIcon = [char]::ConvertFromUtf32(0x274C)
+    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
+
     Write-Host ""
-    Write-Host "Validacion de servidor DFE" -ForegroundColor Cyan
-    Write-Host "--------------------------" -ForegroundColor Gray
-    Write-Host "Revisando claves de registro y rutas tipicas de DFE HP Indigo en Windows."
+    Write-Host "Validacion de hardware" -ForegroundColor Cyan
+    Write-Host "----------------------" -ForegroundColor Gray
+    Write-Host "Evaluando el servidor contra los requisitos aprobados para $Product $Version."
     Write-Host ""
 
-    $foundIndicators = @()
+    try {
+        $validator = Get-ValidateHardwareCommand
+        $result = & $validator.Command -Product $Product -Version $Version
+    }
+    catch {
+        Write-Host "No se pudo ejecutar la validacion de hardware: $($_.Exception.Message)" -ForegroundColor Red
+        return
+    }
 
-    foreach ($indicator in $dfeIndicators) {
-        if (Test-Path -Path $indicator.Path) {
-            $foundIndicators += $indicator
-            Write-Host "[OK] $($indicator.Name): $($indicator.Path)" -ForegroundColor Green
+    Write-Host "Servidor detectado:"
+    Write-Host "   Fabricante: $($result.Manufacturer)"
+    Write-Host "   Modelo: $($result.Model)"
+    Write-Host "   Sistema operativo: $($result.OperatingSystem)"
+    Write-Host "   Memoria: $($result.MemoryGB) GB"
+    Write-Host "   CPU: sockets $($result.CpuSockets), nucleos $($result.CpuCores)"
+    Write-Host ""
+
+    foreach ($check in @($result.Checks)) {
+        switch ($check.Status) {
+            "Pass" {
+                Write-Host "$passIcon [$($check.Status)] $($check.Name)" -ForegroundColor Green
+            }
+            "Fail" {
+                Write-Host "$failIcon [$($check.Status)] $($check.Name)" -ForegroundColor Red
+            }
+            default {
+                Write-Host "$warningIcon [$($check.Status)] $($check.Name)" -ForegroundColor Yellow
+            }
         }
-        else {
-            Write-Host "[--] $($indicator.Name): $($indicator.Path)" -ForegroundColor DarkGray
-        }
+        Write-Host "      $($check.Detail)" -ForegroundColor Gray
     }
 
     Write-Host ""
-    if ($foundIndicators.Count -gt 0) {
-        $names = $foundIndicators | ForEach-Object { $_.Name }
-        Write-Host "Resultado: posible servidor DFE detectado." -ForegroundColor Green
-        Write-Host "Indicadores encontrados: $($names -join ', ')"
+    if ($result.Status -eq "Pass") {
+        Write-Host "Resultado: $passIcon hardware compatible (Pass)." -ForegroundColor Green
     }
     else {
-        Write-Host "Resultado: no se detectaron indicadores DFE en este equipo." -ForegroundColor Yellow
+        Write-Host "Resultado: $failIcon hardware no compatible (Fail)." -ForegroundColor Red
     }
 }
 
@@ -150,7 +196,7 @@ function Show-Menu {
         switch ($option) {
             "1" {
                 Get-SystemInfo
-                Test-DFEServer
+                Test-DFEHardware
             }
             "2" {
                 Test-Network

@@ -1,0 +1,11 @@
+{
+  "description": "HPE ProLiant DL380 Gen10 con Windows Server 2019. Caso de instalacion nueva soportada (Pass).",
+  "expectedStatus": "Pass",
+  "manufacturer": "HPE",
+  "model": "ProLiant DL380 Gen10",
+  "osCaption": "Microsoft Windows Server 2019 Standard",
+  "memoryGB": 96,
+  "cpuSockets": 2,
+  "cpuCores": 32,
+  "cpuName": "Intel(R) Xeon(R) Gold 6248R"
+}

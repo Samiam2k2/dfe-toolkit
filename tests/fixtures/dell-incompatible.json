@@ -1,0 +1,11 @@
+{
+  "description": "Servidor Dell no soportado. Fabricante y modelo fuera de la lista aprobada (Fail).",
+  "expectedStatus": "Fail",
+  "manufacturer": "Dell Inc.",
+  "model": "PowerEdge R740",
+  "osCaption": "Microsoft Windows Server 2019 Standard",
+  "memoryGB": 128,
+  "cpuSockets": 2,
+  "cpuCores": 40,
+  "cpuName": "Intel(R) Xeon(R) Gold 6230"
+}

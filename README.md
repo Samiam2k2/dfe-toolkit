@@ -11,11 +11,21 @@ Herramienta local en PowerShell para validaciones basicas orientadas a servidore
 ## Estructura
 
 ```text
-/Users/samiam/dfe-toolkit/
+dfe-toolkit/
 ├── bootstrap.ps1
 ├── src/
 │   ├── Main.ps1
 │   └── Gui.ps1
+├── scripts/
+│   └── validation/
+│       └── Validate-Hardware.ps1
+├── tests/
+│   ├── Test-ValidateHardware.ps1
+│   └── fixtures/
+│       ├── z8-g5-win10.json
+│       ├── proliant-gen10-ws2019.json
+│       ├── z840-win10.json
+│       └── dell-incompatible.json
 ├── config/
 │   └── settings.json
 ├── manifests/
@@ -75,9 +85,37 @@ Ejecutar directamente:
 
 Tambien se puede abrir desde el menu principal con la opcion `5. Abrir interfaz grafica`.
 
-La GUI permite seleccionar producto, modelo y version, cargar los pasos `01. Validar hardware` y `02. Validar red`, validar fabricante/modelo/SO contra `manifests/hardware-requirements.json`, validar adaptadores de red esperados y ver los resultados en pantalla. En modo pruebas, los pasos se marcan como completados aunque existan advertencias. Al cerrar, guarda el estado de la sesion en `config/session.json`.
+La GUI permite seleccionar producto, modelo y version, cargar los pasos `01. Validar hardware` y `02. Validar red` y ver los resultados en pantalla. Al cerrar, guarda el estado de la sesion en `config/session.json`.
+
+El paso `01. Validar hardware` delega en `scripts/validation/Validate-Hardware.ps1` (local si existe, si no se descarga de GitHub con cache-bust). El estado del paso (`Completado`/`Fallido`) refleja el `Status` real devuelto por el validador; el modo pruebas ya no es el comportamiento por defecto y solo se aplica si la GUI pasa `-TestMode`.
 
 El archivo `manifests/assessment-checks.json` contiene el manifiesto inicial de verificaciones DFE Assessment para Production Pro Commercial 8.3, organizado por categoria.
+
+## Validacion de hardware
+
+`scripts/validation/Validate-Hardware.ps1` es un script independiente (Windows PowerShell 5.1, sin dependencias) que ejecuta los 5 checks de categoria `hardware` de `manifests/assessment-checks.json`: `check-hardware-model`, `check-hardware-manufacturer`, `check-hardware-generation`, `check-memory-capacity` y `check-cpu-inventory`. Devuelve al pipeline un objeto con el `Status` general y el detalle por check (`Id`, `Name`, `Status`, `Detail`, `Blocking`).
+
+Contra el sistema real:
+
+```powershell
+.\scripts\validation\Validate-Hardware.ps1 -Product "Production Pro" -Version "8.3"
+```
+
+Contra un JSON de sistema simulado (pruebas en laboratorio/VM):
+
+```powershell
+.\scripts\validation\Validate-Hardware.ps1 -SystemInfoPath .\tests\fixtures\z8-g5-win10.json
+```
+
+Los minimos de memoria y CPU se leen del bloque `minimumResources` de `manifests/hardware-requirements.json`. Esos valores son placeholder (marcados con `TODO: confirmar contra guia TS1ES-00016`) y deben ajustarse con las cifras oficiales del System Guide antes de promoverse a stable.
+
+## Pruebas
+
+`tests/Test-ValidateHardware.ps1` corre el validador contra los fixtures de `tests/fixtures/`, compara el `Status` esperado vs obtenido y muestra un resumen PASS/FAIL por caso. Sale con codigo distinto de 0 si algun caso falla.
+
+```powershell
+.\tests\Test-ValidateHardware.ps1
+```
 
 ## Notas
 

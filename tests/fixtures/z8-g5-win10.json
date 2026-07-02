@@ -1,0 +1,11 @@
+{
+  "description": "HP Z8 G5 workstation con Windows 10. Caso de instalacion nueva soportada (Pass).",
+  "expectedStatus": "Pass",
+  "manufacturer": "HP",
+  "model": "HP Z8 Fury G5 Workstation Desktop PC",
+  "osCaption": "Microsoft Windows 10 Enterprise",
+  "memoryGB": 128,
+  "cpuSockets": 1,
+  "cpuCores": 24,
+  "cpuName": "Intel(R) Xeon(R) w7-3465X"
+}

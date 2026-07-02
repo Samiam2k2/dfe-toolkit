@@ -85,247 +85,99 @@ function Get-StatusText {
     }
 }
 
-function Get-HardwareRequirements {
+function Get-ValidateHardwareScriptBlock {
     [CmdletBinding()]
     param()
 
-    $localPath = Join-Path -Path $projectRoot -ChildPath "manifests\hardware-requirements.json"
-    if (Test-Path -Path $localPath -PathType Leaf) {
-        return Get-Content -Path $localPath -Raw | ConvertFrom-Json
-    }
-
-    try {
-        $requirementsUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/manifests/hardware-requirements.json?cacheBust=$([DateTime]::UtcNow.Ticks)"
-        return Invoke-RestMethod -Uri $requirementsUrl -Headers @{
-            "Cache-Control" = "no-cache"
-            "Pragma" = "no-cache"
-        } -ErrorAction Stop
-    }
-    catch {
-        $fallbackJson = @'
-{
-  "products": [
-    {
-      "productName": "Production Pro",
-      "version": "8.3",
-      "model": "commercial",
-      "rules": {
-        "newInstallation": {
-          "allowedHardware": [
-            {
-              "id": "hp-z8-g5-windows-10",
-              "manufacturerPatterns": [ "HP", "Hewlett-Packard" ],
-              "modelPatterns": [ "HP Z8 G5", "HP Z8 Fury G5 Workstation Desktop PC", "Z8 G5" ],
-              "requiredOperatingSystemPatterns": [ "Windows 10" ]
-            },
-            {
-              "id": "hpe-proliant-gen10-windows-server-2019",
-              "manufacturerPatterns": [ "HPE", "Hewlett Packard Enterprise", "HP" ],
-              "modelPatterns": [ "ProLiant Gen10", "DL380 Gen10", "HPE ProLiant Gen10" ],
-              "requiredOperatingSystemPatterns": [ "Windows Server 2019" ]
-            },
-            {
-              "id": "hpe-proliant-gen11-windows-server-2019",
-              "manufacturerPatterns": [ "HPE", "Hewlett Packard Enterprise", "HP" ],
-              "modelPatterns": [ "ProLiant Gen11", "DL380 Gen11", "HPE ProLiant Gen11" ],
-              "requiredOperatingSystemPatterns": [ "Windows Server 2019" ]
-            }
-          ]
-        },
-        "upgrade": {
-          "allowedHardware": [
-            {
-              "id": "hp-z8-g5-windows-10",
-              "manufacturerPatterns": [ "HP", "Hewlett-Packard" ],
-              "modelPatterns": [ "HP Z8 G5", "HP Z8 Fury G5 Workstation Desktop PC", "Z8 G5" ],
-              "requiredOperatingSystemPatterns": [ "Windows 10" ]
-            },
-            {
-              "id": "hp-z8-g4-windows-10",
-              "manufacturerPatterns": [ "HP", "Hewlett-Packard" ],
-              "modelPatterns": [ "HP Z8 G4", "Z8 G4" ],
-              "requiredOperatingSystemPatterns": [ "Windows 10" ]
-            },
-            {
-              "id": "hp-z840-windows-10",
-              "manufacturerPatterns": [ "HP", "Hewlett-Packard" ],
-              "modelPatterns": [ "HP Z840", "Z840" ],
-              "requiredOperatingSystemPatterns": [ "Windows 10" ]
-            },
-            {
-              "id": "hpe-proliant-gen10-windows-server-2019",
-              "manufacturerPatterns": [ "HPE", "Hewlett Packard Enterprise", "HP" ],
-              "modelPatterns": [ "ProLiant Gen10", "DL380 Gen10", "HPE ProLiant Gen10" ],
-              "requiredOperatingSystemPatterns": [ "Windows Server 2019" ]
-            },
-            {
-              "id": "hpe-proliant-gen9-windows-server-2019",
-              "manufacturerPatterns": [ "HPE", "Hewlett Packard Enterprise", "HP" ],
-              "modelPatterns": [ "ProLiant Gen9", "DL380 Gen9", "DL360 Gen9", "HPE ProLiant Gen9" ],
-              "requiredOperatingSystemPatterns": [ "Windows Server 2019" ]
-            },
-            {
-              "id": "hpe-proliant-gen8-windows-server-2019",
-              "manufacturerPatterns": [ "HPE", "Hewlett Packard Enterprise", "HP" ],
-              "modelPatterns": [ "ProLiant Gen8", "DL380p", "DL360p", "ML350", "HPE ProLiant Gen8" ],
-              "requiredOperatingSystemPatterns": [ "Windows Server 2019" ]
-            }
-          ]
-        }
-      }
-    }
-  ]
-}
-'@
-        return $fallbackJson | ConvertFrom-Json
-    }
-}
-
-function Test-PatternList {
-    param(
-        [string]$Value,
-        [object[]]$Patterns
-    )
-
-    foreach ($pattern in @($Patterns)) {
-        if ($Value -like "*$pattern*") {
-            return $true
+    $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Hardware.ps1"
+    if (Test-Path -Path $localScript -PathType Leaf) {
+        return @{
+            Command = $localScript
+            IsFile = $true
         }
     }
 
-    return $false
-}
+    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-Hardware.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    } -ErrorAction Stop
 
-function Convert-RuleIdToLabel {
-    param([string]$RuleId)
-
-    $textInfo = (Get-Culture).TextInfo
-    $parts = $RuleId -split "-"
-    $hardwareParts = @()
-    $osParts = @()
-    $osStarted = $false
-
-    foreach ($part in $parts) {
-        if ($part -eq "windows") {
-            $osStarted = $true
-        }
-
-        if ($osStarted) {
-            $osParts += $part
-        }
-        else {
-            $hardwareParts += $part
-        }
+    return @{
+        Command = [scriptblock]::Create($scriptContent)
+        IsFile = $false
     }
-
-    $hardware = ($hardwareParts | ForEach-Object {
-        switch -Regex ($_) {
-            "^hp$" { "HP"; break }
-            "^hpe$" { "HPE"; break }
-            "^z\d+" { $_.ToUpper(); break }
-            "^g\d+" { $_.ToUpper(); break }
-            "^gen\d+" { "Gen" + $_.Substring(3); break }
-            "^dl\d+" { $_.ToUpper(); break }
-            default { $textInfo.ToTitleCase($_) }
-        }
-    }) -join " "
-
-    $os = ($osParts | ForEach-Object {
-        switch -Regex ($_) {
-            "^windows$" { "Windows"; break }
-            "^server$" { "Server"; break }
-            default { $_ }
-        }
-    }) -join " "
-
-    return "$hardware + $os"
-}
-
-function Test-HardwareRule {
-    param(
-        [object]$Rule,
-        [string]$Manufacturer,
-        [string]$Model,
-        [string]$OperatingSystem
-    )
-
-    $manufacturerMatch = Test-PatternList -Value $Manufacturer -Patterns $Rule.manufacturerPatterns
-    $modelMatch = Test-PatternList -Value $Model -Patterns $Rule.modelPatterns
-    $osMatch = Test-PatternList -Value $OperatingSystem -Patterns $Rule.requiredOperatingSystemPatterns
-
-    return ($manufacturerMatch -and $modelMatch -and $osMatch)
 }
 
 function Invoke-HardwareRequirementsValidation {
     [CmdletBinding()]
-    param()
+    param(
+        [string]$Product,
+        [string]$Version,
+        [switch]$TestMode
+    )
 
     $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
     $checkIcon = [char]::ConvertFromUtf32(0x2705)
+    $failIcon = [char]::ConvertFromUtf32(0x274C)
 
-    $requirements = Get-HardwareRequirements
-    $productRules = $requirements.products | Where-Object {
-        $_.productName -eq "Production Pro" -and $_.version -eq "8.3"
-    } | Select-Object -First 1
+    $validator = Get-ValidateHardwareScriptBlock
 
-    if (-not $productRules) {
-        throw "No se encontraron reglas de hardware para Production Pro 8.3."
+    $arguments = @{
+        Product = $Product
+        Version = $Version
+    }
+    if ($TestMode) {
+        $arguments["TestMode"] = $true
     }
 
-    $computerSystem = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop
-    $operatingSystem = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+    $result = & $validator.Command @arguments
 
-    $manufacturer = [string]$computerSystem.Manufacturer
-    $model = [string]$computerSystem.Model
-    $osCaption = [string]$operatingSystem.Caption
-    $matches = @()
+    $lines = @()
+    $lines += "Validacion de hardware"
+    $lines += "======================"
+    $lines += "Producto evaluado: $($result.Product) $($result.Version)"
+    $lines += ""
+    $lines += "Servidor detectado:"
+    $lines += "  Fabricante: $($result.Manufacturer)"
+    $lines += "  Modelo: $($result.Model)"
+    $lines += "  Sistema operativo: $($result.OperatingSystem)"
+    $lines += "  Memoria: $($result.MemoryGB) GB"
+    $lines += "  CPU: sockets $($result.CpuSockets), nucleos $($result.CpuCores)"
+    if ($result.SimulatedSource) {
+        $lines += "  (Origen: datos simulados de laboratorio)"
+    }
+    $lines += ""
+    $lines += "Checks:"
 
-    foreach ($rule in @($productRules.rules.newInstallation.allowedHardware)) {
-        if (Test-HardwareRule -Rule $rule -Manufacturer $manufacturer -Model $model -OperatingSystem $osCaption) {
-            $matches += [pscustomobject]@{
-                Mode = "Instalacion nueva"
-                Label = Convert-RuleIdToLabel -RuleId $rule.id
-            }
+    foreach ($check in @($result.Checks)) {
+        switch ($check.Status) {
+            "Pass" { $icon = $checkIcon }
+            "Fail" { $icon = $failIcon }
+            default { $icon = $warningIcon }
         }
+        $lines += "  $icon [$($check.Status)] $($check.Name)"
+        $lines += "      $($check.Detail)"
     }
 
-    foreach ($rule in @($productRules.rules.upgrade.allowedHardware)) {
-        if (Test-HardwareRule -Rule $rule -Manufacturer $manufacturer -Model $model -OperatingSystem $osCaption) {
-            $matches += [pscustomobject]@{
-                Mode = "Upgrade"
-                Label = Convert-RuleIdToLabel -RuleId $rule.id
-            }
-        }
-    }
-
-    Write-Output "Validacion real de hardware"
-    Write-Output "==========================="
-    Write-Output "Producto evaluado: Production Pro Commercial 8.3"
-    Write-Output ""
-    Write-Output "Servidor detectado:"
-    Write-Output "  Fabricante: $manufacturer"
-    Write-Output "  Modelo: $model"
-    Write-Output "  Sistema operativo: $osCaption"
-    Write-Output ""
-
-    if ($matches.Count -gt 0) {
-        Write-Output "$checkIcon Servidor compatible segun las reglas cargadas."
-        Write-Output ""
-        Write-Output "Coincidencias:"
-        foreach ($match in $matches) {
-            Write-Output "  - Coincide con $($match.Label) ($($match.Mode))"
-        }
+    $lines += ""
+    if ($result.Status -eq "Pass") {
+        $lines += "$checkIcon Estado general: Pass."
     }
     else {
-        Write-Output "$warningIcon El servidor no coincide con ninguna configuracion soportada."
-        Write-Output ""
-        Write-Output "Se esperaba:"
-        Write-Output "  - Instalacion nueva: HP Z8 G5 con Windows 10"
-        Write-Output "  - Instalacion nueva: HPE ProLiant Gen10/11 con Windows Server 2019"
-        Write-Output "  - Upgrade: HP Z8 G5/G4/Z840 con Windows 10"
-        Write-Output "  - Upgrade: HPE ProLiant Gen8/9/10 con Windows Server 2019"
-        Write-Output ""
-        Write-Output "Modo pruebas: este paso se marcara como Completado aunque no haya coincidencia."
+        $lines += "$failIcon Estado general: Fail."
+    }
+
+    if ($result.TestModeApplied) {
+        $lines += ""
+        $lines += "Modo pruebas activo: estado general forzado a Pass; los resultados por check reflejan la realidad."
+    }
+
+    # Se adjunta el objeto de resultado como ultimo elemento para que el llamador
+    # pueda leer el Status real sin re-parsear el texto.
+    return [pscustomobject]@{
+        Text = ($lines -join [Environment]::NewLine)
+        Result = $result
     }
 }
 
@@ -764,7 +616,10 @@ function Update-VersionCombo {
 
 function Invoke-HardwareValidation {
     Update-StepState -Step "Hardware" -Status "Running"
-    $resultTextBox.Text = "Ejecutando validacion real de hardware..."
+    $resultTextBox.Text = "Ejecutando validacion de hardware..."
+
+    $script:hardwareProduct = [string]$productCombo.SelectedItem
+    $script:hardwareVersion = [string]$versionCombo.SelectedItem
 
     $timer = New-Object Windows.Threading.DispatcherTimer
     $timer.Interval = [TimeSpan]::FromMilliseconds(120)
@@ -774,13 +629,21 @@ function Invoke-HardwareValidation {
         $timerSender.Stop()
 
         try {
-            $output = Invoke-HardwareRequirementsValidation 2>&1 | Out-String
-            $resultTextBox.Text = $output.Trim()
-            Update-StepState -Step "Hardware" -Status "Completed"
+            # El comportamiento por defecto ya no es modo pruebas: se refleja el
+            # estado real. Para forzar Pass, agregar -TestMode a esta llamada.
+            $validation = Invoke-HardwareRequirementsValidation -Product $script:hardwareProduct -Version $script:hardwareVersion
+            $resultTextBox.Text = $validation.Text
+
+            if ($validation.Result.Status -eq "Pass") {
+                Update-StepState -Step "Hardware" -Status "Completed"
+            }
+            else {
+                Update-StepState -Step "Hardware" -Status "Failed"
+            }
         }
         catch {
-            $resultTextBox.Text = "Error al ejecutar la validacion de hardware:`r`n$($_.Exception.Message)`r`n`r`nModo pruebas: el paso se marca como Completado para permitir continuar."
-            Update-StepState -Step "Hardware" -Status "Completed"
+            $resultTextBox.Text = "Error al ejecutar la validacion de hardware:`r`n$($_.Exception.Message)"
+            Update-StepState -Step "Hardware" -Status "Failed"
         }
 
         Save-Session

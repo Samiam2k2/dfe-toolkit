@@ -47,6 +47,7 @@ $session = @{
     HardwareStatus = "Pending"
     NetworkStatus = "Pending"
     OperatingSystemStatus = "Pending"
+    StorageStatus = "Pending"
     LastResult = ""
 }
 
@@ -59,6 +60,7 @@ if (Test-Path -Path $sessionPath -PathType Leaf) {
         if ($loadedSession.HardwareStatus) { $session.HardwareStatus = $loadedSession.HardwareStatus }
         if ($loadedSession.NetworkStatus) { $session.NetworkStatus = $loadedSession.NetworkStatus }
         if ($loadedSession.OperatingSystemStatus) { $session.OperatingSystemStatus = $loadedSession.OperatingSystemStatus }
+        if ($loadedSession.StorageStatus) { $session.StorageStatus = $loadedSession.StorageStatus }
         if ($loadedSession.LastResult) { $session.LastResult = $loadedSession.LastResult }
     }
     catch {
@@ -124,6 +126,7 @@ function Invoke-HardwareRequirementsValidation {
     $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
     $checkIcon = [char]::ConvertFromUtf32(0x2705)
     $failIcon = [char]::ConvertFromUtf32(0x274C)
+    $infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
 
     $validator = Get-ValidateHardwareScriptBlock
 
@@ -158,6 +161,7 @@ function Invoke-HardwareRequirementsValidation {
         switch ($check.Status) {
             "Pass" { $icon = $checkIcon }
             "Fail" { $icon = $failIcon }
+            "Info" { $icon = $infoIcon }
             default { $icon = $warningIcon }
         }
         $lines += "  $icon [$($check.Status)] $($check.Name)"
@@ -222,6 +226,7 @@ function Invoke-NetworkRequirementsValidation {
     $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
     $checkIcon = [char]::ConvertFromUtf32(0x2705)
     $failIcon = [char]::ConvertFromUtf32(0x274C)
+    $infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
 
     $validator = Get-ValidateNetworkScriptBlock
 
@@ -261,6 +266,7 @@ function Invoke-NetworkRequirementsValidation {
         switch ($check.Status) {
             "Pass" { $icon = $checkIcon }
             "Fail" { $icon = $failIcon }
+            "Info" { $icon = $infoIcon }
             default { $icon = $warningIcon }
         }
         $lines += "  $icon [$($check.Status)] $($check.Name)"
@@ -322,6 +328,7 @@ function Invoke-OSRequirementsValidation {
     $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
     $checkIcon = [char]::ConvertFromUtf32(0x2705)
     $failIcon = [char]::ConvertFromUtf32(0x274C)
+    $infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
 
     $validator = Get-ValidateOperatingSystemScriptBlock
 
@@ -355,6 +362,7 @@ function Invoke-OSRequirementsValidation {
         switch ($check.Status) {
             "Pass" { $icon = $checkIcon }
             "Fail" { $icon = $failIcon }
+            "Info" { $icon = $infoIcon }
             default { $icon = $warningIcon }
         }
         $lines += "  $icon [$($check.Status)] $($check.Name)"
@@ -371,6 +379,119 @@ function Invoke-OSRequirementsValidation {
     if ($result.DegradedByMode) {
         $lines += ""
         $lines += "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto para validar contra un servidor real."
+    }
+
+    if ($result.TestModeApplied) {
+        $lines += ""
+        $lines += "Modo pruebas activo: estado general forzado a Pass; los resultados por check reflejan la realidad."
+    }
+
+    # Se adjunta el objeto de resultado como ultimo elemento para que el llamador
+    # pueda leer el Status real sin re-parsear el texto.
+    return [pscustomobject]@{
+        Text = ($lines -join [Environment]::NewLine)
+        Result = $result
+    }
+}
+
+function Get-ValidateStorageScriptBlock {
+    [CmdletBinding()]
+    param()
+
+    $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Storage.ps1"
+    if (Test-Path -Path $localScript -PathType Leaf) {
+        return @{
+            Command = $localScript
+            IsFile = $true
+        }
+    }
+
+    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-Storage.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    } -ErrorAction Stop
+
+    return @{
+        Command = [scriptblock]::Create($scriptContent)
+        IsFile = $false
+    }
+}
+
+function Invoke-StorageRequirementsValidation {
+    [CmdletBinding()]
+    param(
+        [string]$Product,
+        [string]$Version,
+        [string]$Profile = "SystemManager",
+        [switch]$TestMode
+    )
+
+    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
+    $checkIcon = [char]::ConvertFromUtf32(0x2705)
+    $failIcon = [char]::ConvertFromUtf32(0x274C)
+    $infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
+
+    $validator = Get-ValidateStorageScriptBlock
+
+    $arguments = @{
+        Product = $Product
+        Version = $Version
+        Profile = $Profile
+    }
+    if ($TestMode) {
+        $arguments["TestMode"] = $true
+    }
+
+    $result = & $validator.Command @arguments
+
+    $lines = @()
+    $lines += "Validacion de almacenamiento"
+    $lines += "============================"
+    $lines += "Producto evaluado: $($result.Product) $($result.Version)"
+    $lines += "Perfil: $($result.Profile)"
+    $lines += ""
+    $lines += "Unidades detectadas:"
+    $lines += "  Esperadas: $($result.Drives.Expected -join ', ')"
+    if ($result.Drives.MissingExpected.Count -gt 0) {
+        $lines += "  Faltantes: $($result.Drives.MissingExpected -join ', ')"
+    }
+    else {
+        $lines += "  Faltantes: ninguna"
+    }
+    if ($result.Drives.Unexpected.Count -gt 0) {
+        $lines += "  No esperadas: $($result.Drives.Unexpected -join ', ')"
+    }
+    else {
+        $lines += "  No esperadas: ninguna"
+    }
+    if ($result.SimulatedSource) {
+        $lines += "  (Origen: datos simulados de laboratorio)"
+    }
+    $lines += ""
+    $lines += "Checks:"
+
+    foreach ($check in @($result.Checks)) {
+        switch ($check.Status) {
+            "Pass" { $icon = $checkIcon }
+            "Fail" { $icon = $failIcon }
+            "Info" { $icon = $infoIcon }
+            default { $icon = $warningIcon }
+        }
+        $lines += "  $icon [$($check.Status)] $($check.Name)"
+        $lines += "      $($check.Detail)"
+    }
+
+    $lines += ""
+    switch ($result.Status) {
+        "Pass" { $lines += "$checkIcon Estado general: Pass." }
+        "Warning" { $lines += "$warningIcon Estado general: Completado con advertencias." }
+        default { $lines += "$failIcon Estado general: Fail." }
+    }
+
+    if ($result.DegradedByMode) {
+        $lines += ""
+        $lines += "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto de hardware para validar contra un servidor real."
     }
 
     if ($result.TestModeApplied) {
@@ -538,12 +659,12 @@ $xaml = @"
                     </Border>
 
                     <Border x:Name="OperatingSystemStepCard"
-                            Background="#FFFFFF"
-                            BorderBrush="#E5E7EB"
-                            BorderThickness="1"
-                            CornerRadius="7"
-                            Padding="14"
-                            Margin="0,0,0,14">
+                             Background="#FFFFFF"
+                             BorderBrush="#E5E7EB"
+                             BorderThickness="1"
+                             CornerRadius="7"
+                             Padding="14"
+                             Margin="0,0,0,14">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="58" />
@@ -555,6 +676,27 @@ $xaml = @"
                             <TextBlock Grid.Column="1" Text="Validar sistema operativo" FontSize="14" Foreground="#111827" VerticalAlignment="Center" />
                             <TextBlock x:Name="OperatingSystemStatusText" Grid.Column="2" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
                             <Button x:Name="ExecuteOperatingSystemButton" Grid.Column="3" Content="Ejecutar" Width="92" Height="32" HorizontalAlignment="Right" />
+                        </Grid>
+                    </Border>
+
+                    <Border x:Name="StorageStepCard"
+                             Background="#FFFFFF"
+                             BorderBrush="#E5E7EB"
+                             BorderThickness="1"
+                             CornerRadius="7"
+                             Padding="14"
+                             Margin="0,0,0,14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="58" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="160" />
+                                <ColumnDefinition Width="110" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="04" FontSize="18" FontWeight="Bold" Foreground="#0078D4" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="Validar almacenamiento" FontSize="14" Foreground="#111827" VerticalAlignment="Center" />
+                            <TextBlock x:Name="StorageStatusText" Grid.Column="2" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Button x:Name="ExecuteStorageButton" Grid.Column="3" Content="Ejecutar" Width="92" Height="32" HorizontalAlignment="Right" />
                         </Grid>
                     </Border>
 
@@ -603,12 +745,15 @@ $loadStepsButton = $window.FindName("LoadStepsButton")
 $hardwareStepCard = $window.FindName("HardwareStepCard")
 $networkStepCard = $window.FindName("NetworkStepCard")
 $operatingSystemStepCard = $window.FindName("OperatingSystemStepCard")
+$storageStepCard = $window.FindName("StorageStepCard")
 $hardwareStatusText = $window.FindName("HardwareStatusText")
 $networkStatusText = $window.FindName("NetworkStatusText")
 $operatingSystemStatusText = $window.FindName("OperatingSystemStatusText")
+$storageStatusText = $window.FindName("StorageStatusText")
 $executeHardwareButton = $window.FindName("ExecuteHardwareButton")
 $executeNetworkButton = $window.FindName("ExecuteNetworkButton")
 $executeOperatingSystemButton = $window.FindName("ExecuteOperatingSystemButton")
+$executeStorageButton = $window.FindName("ExecuteStorageButton")
 $resultTextBox = $window.FindName("ResultTextBox")
 $progressBar = $window.FindName("MainProgressBar")
 $progressLabel = $window.FindName("ProgressLabel")
@@ -648,10 +793,18 @@ $operatingSystemShadow.ShadowDepth = 1
 $operatingSystemShadow.Opacity = 0.16
 $operatingSystemStepCard.Effect = $operatingSystemShadow
 
+$storageShadow = New-Object Windows.Media.Effects.DropShadowEffect
+$storageShadow.Color = [Windows.Media.Color]::FromRgb(0, 0, 0)
+$storageShadow.BlurRadius = 12
+$storageShadow.ShadowDepth = 1
+$storageShadow.Opacity = 0.16
+$storageStepCard.Effect = $storageShadow
+
 $script:stepStatuses = @{
     Hardware = $session.HardwareStatus
     Network = $session.NetworkStatus
     OperatingSystem = $session.OperatingSystemStatus
+    Storage = $session.StorageStatus
 }
 
 function Save-Session {
@@ -662,6 +815,7 @@ function Save-Session {
         HardwareStatus = $script:stepStatuses.Hardware
         NetworkStatus = $script:stepStatuses.Network
         OperatingSystemStatus = $script:stepStatuses.OperatingSystem
+        StorageStatus = $script:stepStatuses.Storage
         LastResult = $resultTextBox.Text
         SavedAt = (Get-Date).ToString("s")
     }
@@ -693,6 +847,10 @@ function Update-StepState {
     elseif ($Step -eq "OperatingSystem") {
         $statusText = $operatingSystemStatusText
         $button = $executeOperatingSystemButton
+    }
+    elseif ($Step -eq "Storage") {
+        $statusText = $storageStatusText
+        $button = $executeStorageButton
     }
     else {
         $statusText = $networkStatusText
@@ -744,11 +902,13 @@ function Load-Steps {
     $script:stepStatuses.Hardware = "Pending"
     $script:stepStatuses.Network = "Pending"
     $script:stepStatuses.OperatingSystem = "Pending"
+    $script:stepStatuses.Storage = "Pending"
     $resultTextBox.Text = ""
     $planSubtitle.Text = "$($productCombo.SelectedItem) - $($modelCombo.SelectedItem) - Version $($versionCombo.SelectedItem)"
     Update-StepState -Step "Hardware" -Status "Pending"
     Update-StepState -Step "Network" -Status "Pending"
     Update-StepState -Step "OperatingSystem" -Status "Pending"
+    Update-StepState -Step "Storage" -Status "Pending"
     Save-Session
 }
 
@@ -892,8 +1052,43 @@ function Invoke-OSValidation {
     $timer.Start()
 }
 
+function Invoke-StorageValidation {
+    Update-StepState -Step "Storage" -Status "Running"
+    $resultTextBox.Text = "Ejecutando validacion de almacenamiento..."
+
+    $script:storageProduct = [string]$productCombo.SelectedItem
+    $script:storageVersion = [string]$versionCombo.SelectedItem
+
+    $timer = New-Object Windows.Threading.DispatcherTimer
+    $timer.Interval = [TimeSpan]::FromMilliseconds(120)
+    $timer.Add_Tick({
+        param($timerSender, $timerArgs)
+
+        $timerSender.Stop()
+
+        try {
+            $validation = Invoke-StorageRequirementsValidation -Product $script:storageProduct -Version $script:storageVersion -Profile "SystemManager"
+            $resultTextBox.Text = $validation.Text
+
+            switch ($validation.Result.Status) {
+                "Pass" { Update-StepState -Step "Storage" -Status "Completed" }
+                "Warning" { Update-StepState -Step "Storage" -Status "Warning" }
+                default { Update-StepState -Step "Storage" -Status "Failed" }
+            }
+        }
+        catch {
+            $resultTextBox.Text = "Error al ejecutar la validacion de almacenamiento:`r`n$($_.Exception.Message)"
+            Update-StepState -Step "Storage" -Status "Failed"
+        }
+
+        Save-Session
+    })
+    $timer.Start()
+}
+
+
 function Show-Report {
-    $message = "Reporte DFE-Toolkit`n`nProducto: $($productCombo.SelectedItem)`nModelo: $($modelCombo.SelectedItem)`nVersion: $($versionCombo.SelectedItem)`nPaso 01 - Validar hardware: $(Get-StatusText -Status $script:stepStatuses.Hardware)`nPaso 02 - Validar red: $(Get-StatusText -Status $script:stepStatuses.Network)`nPaso 03 - Validar sistema operativo: $(Get-StatusText -Status $script:stepStatuses.OperatingSystem)"
+    $message = "Reporte DFE-Toolkit`n`nProducto: $($productCombo.SelectedItem)`nModelo: $($modelCombo.SelectedItem)`nVersion: $($versionCombo.SelectedItem)`nPaso 01 - Validar hardware: $(Get-StatusText -Status $script:stepStatuses.Hardware)`nPaso 02 - Validar red: $(Get-StatusText -Status $script:stepStatuses.Network)`nPaso 03 - Validar sistema operativo: $(Get-StatusText -Status $script:stepStatuses.OperatingSystem)`nPaso 04 - Validar almacenamiento: $(Get-StatusText -Status $script:stepStatuses.Storage)"
     [Windows.MessageBox]::Show($message, "Reporte DFE-Toolkit", "OK", "Information") | Out-Null
 }
 
@@ -932,6 +1127,10 @@ $executeOperatingSystemButton.Add_Click({
     Invoke-OSValidation
 })
 
+$executeStorageButton.Add_Click({
+    Invoke-StorageValidation
+})
+
 $reportButton.Add_Click({
     Show-Report
 })
@@ -944,6 +1143,7 @@ Update-ModelCombo
 Update-StepState -Step "Hardware" -Status $script:stepStatuses.Hardware
 Update-StepState -Step "Network" -Status $script:stepStatuses.Network
 Update-StepState -Step "OperatingSystem" -Status $script:stepStatuses.OperatingSystem
+Update-StepState -Step "Storage" -Status $script:stepStatuses.Storage
 $planSubtitle.Text = "$($productCombo.SelectedItem) - $($modelCombo.SelectedItem) - Version $($versionCombo.SelectedItem)"
 
 $window.ShowDialog() | Out-Null

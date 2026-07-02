@@ -1,0 +1,20 @@
+{
+  "description": "Almacenamiento sin unidad S (VM de laboratorio): solo C esta presente. check-storage-drive-layout y check-storage-backup-location dan Warning.",
+  "expectedStatus": "Warning",
+  "drives": [
+    {
+      "letter": "C",
+      "sizeGB": 250,
+      "freeGB": 120,
+      "exists": true
+    },
+    {
+      "letter": "S",
+      "sizeGB": null,
+      "freeGB": null,
+      "exists": false
+    }
+  ],
+  "backupPathExists": false,
+  "backupPathWritable": false
+}

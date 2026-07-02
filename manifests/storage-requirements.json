@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "notes": "TODO: Los valores de minFreeGB son placeholders no oficiales. Confirmar espacio libre minimo contra guia TS1ES-00016.",
+  "expectedDrives": [
+    {
+      "letter": "C",
+      "role": "system",
+      "minFreeGB": null,
+      "notes": "TODO: confirmar espacio libre minimo contra guia TS1ES-00016"
+    },
+    {
+      "letter": "S",
+      "role": "data",
+      "minFreeGB": null,
+      "notes": "TODO: confirmar espacio libre minimo contra guia TS1ES-00016"
+    }
+  ],
+  "backupLocations": [
+    {
+      "profile": "SystemManager",
+      "path": "S:\\BACKUP"
+    },
+    {
+      "profile": "IPC_RIP",
+      "path": "C:\\BACKUP"
+    }
+  ]
+}

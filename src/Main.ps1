@@ -323,6 +323,116 @@ function Test-DFEOperatingSystem {
     }
 }
 
+function Get-ValidateStorageCommand {
+    [CmdletBinding()]
+    param()
+
+    $localScript = $null
+    if ($PSScriptRoot) {
+        $projectRoot = Split-Path -Parent $PSScriptRoot
+        $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Storage.ps1"
+    }
+
+    if ($localScript -and (Test-Path -Path $localScript -PathType Leaf)) {
+        return @{
+            Command = $localScript
+            IsFile = $true
+        }
+    }
+
+    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-Storage.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    } -ErrorAction Stop
+
+    return @{
+        Command = [scriptblock]::Create($scriptContent)
+        IsFile = $false
+    }
+}
+
+function Test-DFEStorage {
+    [CmdletBinding()]
+    param(
+        [string]$Product = "Production Pro",
+        [string]$Version = "8.3",
+        [string]$Profile = "SystemManager"
+    )
+
+    $passIcon = [char]::ConvertFromUtf32(0x2705)
+    $failIcon = [char]::ConvertFromUtf32(0x274C)
+    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
+    $infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
+
+    Write-Host ""
+    Write-Host "Validacion de almacenamiento" -ForegroundColor Cyan
+    Write-Host "----------------------------" -ForegroundColor Gray
+    Write-Host "Evaluando espacio libre, layout y ruta de backup contra el manifiesto para $Product $Version ($Profile)."
+    Write-Host ""
+
+    try {
+        $validator = Get-ValidateStorageCommand
+        $result = & $validator.Command -Product $Product -Version $Version -Profile $Profile
+    }
+    catch {
+        Write-Host "No se pudo ejecutar la validacion de almacenamiento: $($_.Exception.Message)" -ForegroundColor Red
+        return
+    }
+
+    Write-Host "Unidades detectadas:"
+    Write-Host "   Esperadas: $($result.Drives.Expected -join ', ')"
+    if ($result.Drives.MissingExpected.Count -gt 0) {
+        Write-Host "   Faltantes: $($result.Drives.MissingExpected -join ', ')" -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "   Faltantes: ninguna"
+    }
+    if ($result.Drives.Unexpected.Count -gt 0) {
+        Write-Host "   No esperadas: $($result.Drives.Unexpected -join ', ')"
+    }
+    else {
+        Write-Host "   No esperadas: ninguna"
+    }
+    Write-Host ""
+
+    foreach ($check in @($result.Checks)) {
+        switch ($check.Status) {
+            "Pass" {
+                Write-Host "$passIcon [$($check.Status)] $($check.Name)" -ForegroundColor Green
+            }
+            "Fail" {
+                Write-Host "$failIcon [$($check.Status)] $($check.Name)" -ForegroundColor Red
+            }
+            "Info" {
+                Write-Host "$infoIcon [$($check.Status)] $($check.Name)" -ForegroundColor Cyan
+            }
+            default {
+                Write-Host "$warningIcon [$($check.Status)] $($check.Name)" -ForegroundColor Yellow
+            }
+        }
+        Write-Host "      $($check.Detail)" -ForegroundColor Gray
+    }
+
+    Write-Host ""
+    switch ($result.Status) {
+        "Pass" {
+            Write-Host "Resultado: $passIcon almacenamiento conforme (Pass)." -ForegroundColor Green
+        }
+        "Warning" {
+            Write-Host "Resultado: $warningIcon almacenamiento completado con advertencias (Warning)." -ForegroundColor Yellow
+        }
+        default {
+            Write-Host "Resultado: $failIcon almacenamiento no conforme (Fail)." -ForegroundColor Red
+        }
+    }
+
+    if ($result.DegradedByMode) {
+        Write-Host ""
+        Write-Host "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto de hardware para validar contra un servidor real." -ForegroundColor Yellow
+    }
+}
+
 function Show-DemoSummary {
     [CmdletBinding()]
     param()
@@ -339,6 +449,7 @@ function Show-DemoSummary {
     Write-Host "====================================="
     Write-Host "$checkIcon Verificaci$($oAcuteLower)n de hardware: COMPLETADA" -ForegroundColor Green
     Write-Host "$checkIcon Verificaci$($oAcuteLower)n de red: COMPLETADA" -ForegroundColor Green
+    Write-Host "$checkIcon Verificaci$($oAcuteLower)n de almacenamiento: COMPLETADA" -ForegroundColor Green
     Write-Host "$pendingIcon Instalaci$($oAcuteLower)n de prerequisitos: PENDIENTE (modo demo)" -ForegroundColor Yellow
     Write-Host "$pendingIcon Instalaci$($oAcuteLower)n de software principal: PENDIENTE (modo demo)" -ForegroundColor Yellow
     Write-Host "$ideaIcon Este es un modo de demostraci$($oAcuteLower)n." -ForegroundColor Cyan
@@ -355,9 +466,10 @@ function Show-Menu {
         Write-Host "1. Validar Hardware"
         Write-Host "2. Validar Red"
         Write-Host "3. Validar Sistema Operativo"
-        Write-Host "4. Salir"
-        Write-Host "5. Ver resumen de instalacion"
-        Write-Host "6. Abrir interfaz grafica"
+        Write-Host "4. Validar Almacenamiento"
+        Write-Host "5. Salir"
+        Write-Host "6. Ver resumen de instalacion"
+        Write-Host "7. Abrir interfaz grafica"
         Write-Host ""
 
         $option = Read-Host "Seleccione una opcion"
@@ -374,19 +486,22 @@ function Show-Menu {
                 Test-DFEOperatingSystem
             }
             "4" {
-                Write-Host "Saliendo de DFE Toolkit."
+                Test-DFEStorage
             }
             "5" {
-                Show-DemoSummary
+                Write-Host "Saliendo de DFE Toolkit."
             }
             "6" {
+                Show-DemoSummary
+            }
+            "7" {
                 Invoke-DFEGui
             }
             default {
                 Write-Host "Opcion invalida. Intente nuevamente." -ForegroundColor Yellow
             }
         }
-    } while ($option -ne "4")
+    } while ($option -ne "5")
 }
 
 function Invoke-DFEGui {

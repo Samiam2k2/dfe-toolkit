@@ -1,0 +1,20 @@
+{
+  "description": "Almacenamiento correcto: C y S presentes con espacio amplio, S:\\BACKUP existe y es escribible. Como minFreeGB es null por defecto, check-storage-free-space da Warning informativo, por lo que el Status general es Warning.",
+  "expectedStatus": "Warning",
+  "drives": [
+    {
+      "letter": "C",
+      "sizeGB": 250,
+      "freeGB": 120,
+      "exists": true
+    },
+    {
+      "letter": "S",
+      "sizeGB": 1000,
+      "freeGB": 800,
+      "exists": true
+    }
+  ],
+  "backupPathExists": true,
+  "backupPathWritable": true
+}

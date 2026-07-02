@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "1.0",
+  "validationMode": "enforcing",
+  "notes": "Manifiesto de prueba para storage en modo enforcing con limites definidos.",
+  "expectedDrives": [
+    {
+      "letter": "C",
+      "role": "system",
+      "minFreeGB": 200,
+      "notes": "Minimo de 200 GB para forzar un Fail en fixtures con menos de eso"
+    },
+    {
+      "letter": "S",
+      "role": "data",
+      "minFreeGB": 100,
+      "notes": "Minimo de 100 GB"
+    }
+  ],
+  "backupLocations": [
+    {
+      "profile": "SystemManager",
+      "path": "S:\\BACKUP"
+    },
+    {
+      "profile": "IPC_RIP",
+      "path": "C:\\BACKUP"
+    }
+  ]
+}

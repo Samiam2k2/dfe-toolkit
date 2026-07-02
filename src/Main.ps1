@@ -227,6 +227,102 @@ function Test-DFENetwork {
     }
 }
 
+function Get-ValidateOperatingSystemCommand {
+    [CmdletBinding()]
+    param()
+
+    $localScript = $null
+    if ($PSScriptRoot) {
+        $projectRoot = Split-Path -Parent $PSScriptRoot
+        $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-OperatingSystem.ps1"
+    }
+
+    if ($localScript -and (Test-Path -Path $localScript -PathType Leaf)) {
+        return @{
+            Command = $localScript
+            IsFile = $true
+        }
+    }
+
+    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-OperatingSystem.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    } -ErrorAction Stop
+
+    return @{
+        Command = [scriptblock]::Create($scriptContent)
+        IsFile = $false
+    }
+}
+
+function Test-DFEOperatingSystem {
+    [CmdletBinding()]
+    param(
+        [string]$Product = "Production Pro",
+        [string]$Version = "8.3"
+    )
+
+    $passIcon = [char]::ConvertFromUtf32(0x2705)
+    $failIcon = [char]::ConvertFromUtf32(0x274C)
+    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
+
+    Write-Host ""
+    Write-Host "Validacion de sistema operativo" -ForegroundColor Cyan
+    Write-Host "-------------------------------" -ForegroundColor Gray
+    Write-Host "Evaluando version y arquitectura del SO contra el hardware detectado para $Product $Version."
+    Write-Host ""
+
+    try {
+        $validator = Get-ValidateOperatingSystemCommand
+        $result = & $validator.Command -Product $Product -Version $Version
+    }
+    catch {
+        Write-Host "No se pudo ejecutar la validacion de sistema operativo: $($_.Exception.Message)" -ForegroundColor Red
+        return
+    }
+
+    Write-Host "Servidor detectado:"
+    Write-Host "   Fabricante: $($result.Manufacturer)"
+    Write-Host "   Modelo: $($result.Model)"
+    Write-Host "   Sistema operativo: $($result.OperatingSystem)"
+    Write-Host "   Arquitectura: $($result.OSArchitecture)"
+    Write-Host ""
+
+    foreach ($check in @($result.Checks)) {
+        switch ($check.Status) {
+            "Pass" {
+                Write-Host "$passIcon [$($check.Status)] $($check.Name)" -ForegroundColor Green
+            }
+            "Fail" {
+                Write-Host "$failIcon [$($check.Status)] $($check.Name)" -ForegroundColor Red
+            }
+            default {
+                Write-Host "$warningIcon [$($check.Status)] $($check.Name)" -ForegroundColor Yellow
+            }
+        }
+        Write-Host "      $($check.Detail)" -ForegroundColor Gray
+    }
+
+    Write-Host ""
+    switch ($result.Status) {
+        "Pass" {
+            Write-Host "Resultado: $passIcon sistema operativo conforme (Pass)." -ForegroundColor Green
+        }
+        "Warning" {
+            Write-Host "Resultado: $warningIcon sistema operativo con advertencias (Warning)." -ForegroundColor Yellow
+        }
+        default {
+            Write-Host "Resultado: $failIcon sistema operativo no conforme (Fail)." -ForegroundColor Red
+        }
+    }
+
+    if ($result.DegradedByMode) {
+        Write-Host ""
+        Write-Host "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto para validar contra un servidor real." -ForegroundColor Yellow
+    }
+}
+
 function Show-DemoSummary {
     [CmdletBinding()]
     param()
@@ -258,9 +354,10 @@ function Show-Menu {
         Write-Host "==========="
         Write-Host "1. Validar Hardware"
         Write-Host "2. Validar Red"
-        Write-Host "3. Salir"
-        Write-Host "4. Ver resumen de instalacion"
-        Write-Host "5. Abrir interfaz grafica"
+        Write-Host "3. Validar Sistema Operativo"
+        Write-Host "4. Salir"
+        Write-Host "5. Ver resumen de instalacion"
+        Write-Host "6. Abrir interfaz grafica"
         Write-Host ""
 
         $option = Read-Host "Seleccione una opcion"
@@ -274,19 +371,22 @@ function Show-Menu {
                 Test-DFENetwork
             }
             "3" {
-                Write-Host "Saliendo de DFE Toolkit."
+                Test-DFEOperatingSystem
             }
             "4" {
-                Show-DemoSummary
+                Write-Host "Saliendo de DFE Toolkit."
             }
             "5" {
+                Show-DemoSummary
+            }
+            "6" {
                 Invoke-DFEGui
             }
             default {
                 Write-Host "Opcion invalida. Intente nuevamente." -ForegroundColor Yellow
             }
         }
-    } while ($option -ne "3")
+    } while ($option -ne "4")
 }
 
 function Invoke-DFEGui {

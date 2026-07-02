@@ -19,19 +19,29 @@ dfe-toolkit/
 ├── scripts/
 │   └── validation/
 │       ├── Validate-Hardware.ps1
-│       └── Validate-Network.ps1
+│       ├── Validate-Network.ps1
+│       └── Validate-OperatingSystem.ps1
 ├── tests/
 │   ├── Test-ValidateHardware.ps1
 │   ├── Test-ValidateNetwork.ps1
+│   ├── Test-ValidateOperatingSystem.ps1
 │   └── fixtures/
 │       ├── z8-g5-win10.json
 │       ├── proliant-gen10-ws2019.json
 │       ├── z840-win10.json
 │       ├── dell-incompatible.json
-│       └── network/
-│           ├── net-completa.json
-│           ├── net-mala-config.json
-│           └── net-sin-adaptadores.json
+│       ├── network/
+│       │   ├── net-completa.json
+│       │   ├── net-mala-config.json
+│       │   └── net-sin-adaptadores.json
+│       ├── os/
+│       │   ├── os-ws2019-proliant.json
+│       │   ├── os-win10-z8.json
+│       │   ├── os-wrong-os.json
+│       │   ├── os-32bit.json
+│       │   └── os-unknown-model.json
+│       └── manifests/
+│           └── hardware-requirements-enforcing.json
 ├── config/
 │   └── settings.json
 ├── manifests/
@@ -76,9 +86,10 @@ El menu de texto incluye estas opciones:
 
 1. Validar Hardware
 2. Validar Red
-3. Salir
-4. Ver resumen de instalacion
-5. Abrir interfaz grafica
+3. Validar Sistema Operativo
+4. Salir
+5. Ver resumen de instalacion
+6. Abrir interfaz grafica
 
 ## GUI WPF
 
@@ -90,11 +101,11 @@ Ejecutar directamente:
 .\src\Gui.ps1
 ```
 
-Tambien se puede abrir desde el menu principal con la opcion `5. Abrir interfaz grafica`.
+Tambien se puede abrir desde el menu principal con la opcion `6. Abrir interfaz grafica`.
 
-La GUI permite seleccionar producto, modelo y version, cargar los pasos `01. Validar hardware` y `02. Validar red` y ver los resultados en pantalla. Al cerrar, guarda el estado de la sesion en `config/session.json`.
+La GUI permite seleccionar producto, modelo y version, cargar los pasos `01. Validar hardware`, `02. Validar red` y `03. Validar sistema operativo` y ver los resultados en pantalla. Al cerrar, guarda el estado de la sesion en `config/session.json`. Cada paso comparte un unico panel de resultado; el boton de cada paso queda como `Ver / Repetir` tras completarse para poder volver a ejecutarlo y mostrar de nuevo su resultado.
 
-Los pasos `01. Validar hardware` y `02. Validar red` delegan en `scripts/validation/Validate-Hardware.ps1` y `scripts/validation/Validate-Network.ps1` respectivamente (local si existe, si no se descarga de GitHub con cache-bust). El estado del paso refleja el `Status` real devuelto por el validador: `Pass` -> `Completado`, `Warning` -> `Completado con advertencias` (cuenta como completado en la barra de progreso), `Fail` -> `Fallido`. El modo pruebas ya no es el comportamiento por defecto y solo se aplica si la GUI pasa `-TestMode`.
+Los pasos `01. Validar hardware`, `02. Validar red` y `03. Validar sistema operativo` delegan en `scripts/validation/Validate-Hardware.ps1`, `scripts/validation/Validate-Network.ps1` y `scripts/validation/Validate-OperatingSystem.ps1` respectivamente (local si existe, si no se descarga de GitHub con cache-bust). El estado del paso refleja el `Status` real devuelto por el validador: `Pass` -> `Completado`, `Warning` -> `Completado con advertencias` (cuenta como completado en la barra de progreso), `Fail` -> `Fallido`. El modo pruebas ya no es el comportamiento por defecto y solo se aplica si la GUI pasa `-TestMode`.
 
 El archivo `manifests/assessment-checks.json` contiene el manifiesto inicial de verificaciones DFE Assessment para Production Pro Commercial 8.3, organizado por categoria.
 
@@ -143,13 +154,34 @@ Contra un JSON de red simulada (pruebas en laboratorio/VM):
 .\scripts\validation\Validate-Network.ps1 -SystemInfoPath .\tests\fixtures\network\net-completa.json
 ```
 
+## Validacion de sistema operativo
+
+`scripts/validation/Validate-OperatingSystem.ps1` es un script independiente (Windows PowerShell 5.1, sin dependencias) que ejecuta 2 de los 4 checks de categoria `operating-system` de `manifests/assessment-checks.json` (`check-operating-system-version` y `check-os-architecture`) mas `check-os-build` como check informativo. NO incluye `check-pending-reboot` (se hara en un paso posterior de pre-instalacion). Devuelve un objeto con la misma forma que los otros validadores (`Status`, `RealStatus`, `ValidationMode`, `DegradedByMode`, `TestModeApplied`, `Checks`) mas `OSArchitecture`.
+
+El SO valido depende del hardware: no hay un manifiesto de SO propio. Se reutiliza la matriz de compatibilidad de `manifests/hardware-requirements.json`, donde cada regla ya trae `requiredOperatingSystemPatterns`. El Paso 3 resuelve que reglas coinciden con el modelo detectado y valida el SO contra los patrones de SO de esas reglas. Si el modelo no corresponde a ninguna configuracion conocida, `check-operating-system-version` da `Warning` y remite al Paso 1 (no duplica la incompatibilidad de hardware como `Fail`).
+
+`check-os-build` es informativo por ahora: se lee el bloque raiz `osBuildBaseline` de `manifests/hardware-requirements.json`; mientras `approvedBuilds` este vacio, el check queda como informativo (neutro para el estado general) y solo registra el build detectado. El validador aplica el mismo `validationMode` (informational/enforcing) y `-TestMode` que el de hardware.
+
+Contra el sistema real:
+
+```powershell
+.\scripts\validation\Validate-OperatingSystem.ps1 -Product "Production Pro" -Version "8.3"
+```
+
+Contra un JSON de sistema simulado (pruebas en laboratorio/VM):
+
+```powershell
+.\scripts\validation\Validate-OperatingSystem.ps1 -SystemInfoPath .\tests\fixtures\os\os-win10-z8.json
+```
+
 ## Pruebas
 
-`tests/Test-ValidateHardware.ps1` y `tests/Test-ValidateNetwork.ps1` corren cada validador contra sus fixtures (`tests/fixtures/` y `tests/fixtures/network/`), comparan el `Status` esperado vs obtenido y muestran un resumen PASS/FAIL por caso. Salen con codigo distinto de 0 si algun caso falla.
+`tests/Test-ValidateHardware.ps1`, `tests/Test-ValidateNetwork.ps1` y `tests/Test-ValidateOperatingSystem.ps1` corren cada validador contra sus fixtures (`tests/fixtures/`, `tests/fixtures/network/` y `tests/fixtures/os/`), comparan el `Status` esperado vs obtenido y muestran un resumen PASS/FAIL por caso. Los tests de hardware y de SO ademas corren un caso `enforcing` (usando `tests/fixtures/manifests/hardware-requirements-enforcing.json`) para verificar que los `Fail` reales bloquean cuando no hay degradacion. Salen con codigo distinto de 0 si algun caso falla.
 
 ```powershell
 .\tests\Test-ValidateHardware.ps1
 .\tests\Test-ValidateNetwork.ps1
+.\tests\Test-ValidateOperatingSystem.ps1
 ```
 
 ## Notas

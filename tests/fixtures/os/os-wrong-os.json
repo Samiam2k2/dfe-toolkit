@@ -1,0 +1,9 @@
+{
+  "description": "HP Z8 G5 (workstation) con Windows Server 2019: el SO no esta aprobado para ese modelo (workstation espera Windows 10). check-operating-system-version da Fail real, degradado a Warning por validationMode informational. En enforcing daria Fail.",
+  "expectedStatus": "Warning",
+  "manufacturer": "HP",
+  "model": "HP Z8 Fury G5 Workstation Desktop PC",
+  "osCaption": "Microsoft Windows Server 2019 Standard",
+  "osArchitecture": "64-bit",
+  "osVersion": "10.0.17763"
+}

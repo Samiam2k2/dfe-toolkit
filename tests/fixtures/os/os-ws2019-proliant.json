@@ -1,0 +1,9 @@
+{
+  "description": "HPE ProLiant Gen10 con Windows Server 2019 64-bit. SO aprobado para ese modelo y arquitectura correcta -> Pass.",
+  "expectedStatus": "Pass",
+  "manufacturer": "HPE",
+  "model": "ProLiant DL380 Gen10",
+  "osCaption": "Microsoft Windows Server 2019 Standard",
+  "osArchitecture": "64-bit",
+  "osVersion": "10.0.17763"
+}

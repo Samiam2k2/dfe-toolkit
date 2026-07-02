@@ -1,0 +1,9 @@
+{
+  "description": "HP Z8 G5 con Windows 10 64-bit. SO aprobado para ese modelo workstation y arquitectura correcta -> Pass.",
+  "expectedStatus": "Pass",
+  "manufacturer": "HP",
+  "model": "HP Z8 Fury G5 Workstation Desktop PC",
+  "osCaption": "Microsoft Windows 10 Enterprise",
+  "osArchitecture": "64-bit",
+  "osVersion": "10.0.19045"
+}

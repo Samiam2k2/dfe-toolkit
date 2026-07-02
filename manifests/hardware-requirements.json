@@ -2,6 +2,10 @@
   "schemaVersion": "1.0",
   "validationMode": "informational",
   "validationModeNotes": "Controla como se calcula el Status GENERAL del paso (no cambia la severidad real de cada check). Valores validos: 'informational' (degrada los Fail bloqueantes a Warning; para laboratorio/VM sin un servidor DFE real) y 'enforcing' (respeta el blocking real de cada check y bloquea con Fail; para validacion contra un servidor de produccion). Es una palanca distinta de -TestMode, que fuerza el Status a Pass.",
+  "osBuildBaseline": {
+    "approvedBuilds": [],
+    "notes": "TODO: agregar builds/revisiones aprobados del SO. Lista vacia = check-os-build informativo."
+  },
   "source": {
     "documentTitle": "HP Indigo PrintOS Production Pro for Commercial 8.3 Software Guide",
     "documentNumber": "TS1ES-00016",

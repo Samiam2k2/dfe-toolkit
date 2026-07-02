@@ -46,6 +46,7 @@ $session = @{
     Version = "8.3"
     HardwareStatus = "Pending"
     NetworkStatus = "Pending"
+    OperatingSystemStatus = "Pending"
     LastResult = ""
 }
 
@@ -57,6 +58,7 @@ if (Test-Path -Path $sessionPath -PathType Leaf) {
         if ($loadedSession.Version) { $session.Version = $loadedSession.Version }
         if ($loadedSession.HardwareStatus) { $session.HardwareStatus = $loadedSession.HardwareStatus }
         if ($loadedSession.NetworkStatus) { $session.NetworkStatus = $loadedSession.NetworkStatus }
+        if ($loadedSession.OperatingSystemStatus) { $session.OperatingSystemStatus = $loadedSession.OperatingSystemStatus }
         if ($loadedSession.LastResult) { $session.LastResult = $loadedSession.LastResult }
     }
     catch {
@@ -285,6 +287,105 @@ function Invoke-NetworkRequirementsValidation {
     }
 }
 
+function Get-ValidateOperatingSystemScriptBlock {
+    [CmdletBinding()]
+    param()
+
+    $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-OperatingSystem.ps1"
+    if (Test-Path -Path $localScript -PathType Leaf) {
+        return @{
+            Command = $localScript
+            IsFile = $true
+        }
+    }
+
+    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-OperatingSystem.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    } -ErrorAction Stop
+
+    return @{
+        Command = [scriptblock]::Create($scriptContent)
+        IsFile = $false
+    }
+}
+
+function Invoke-OSRequirementsValidation {
+    [CmdletBinding()]
+    param(
+        [string]$Product,
+        [string]$Version,
+        [switch]$TestMode
+    )
+
+    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
+    $checkIcon = [char]::ConvertFromUtf32(0x2705)
+    $failIcon = [char]::ConvertFromUtf32(0x274C)
+
+    $validator = Get-ValidateOperatingSystemScriptBlock
+
+    $arguments = @{
+        Product = $Product
+        Version = $Version
+    }
+    if ($TestMode) {
+        $arguments["TestMode"] = $true
+    }
+
+    $result = & $validator.Command @arguments
+
+    $lines = @()
+    $lines += "Validacion de sistema operativo"
+    $lines += "==============================="
+    $lines += "Producto evaluado: $($result.Product) $($result.Version)"
+    $lines += ""
+    $lines += "Servidor detectado:"
+    $lines += "  Fabricante: $($result.Manufacturer)"
+    $lines += "  Modelo: $($result.Model)"
+    $lines += "  Sistema operativo: $($result.OperatingSystem)"
+    $lines += "  Arquitectura: $($result.OSArchitecture)"
+    if ($result.SimulatedSource) {
+        $lines += "  (Origen: datos simulados de laboratorio)"
+    }
+    $lines += ""
+    $lines += "Checks:"
+
+    foreach ($check in @($result.Checks)) {
+        switch ($check.Status) {
+            "Pass" { $icon = $checkIcon }
+            "Fail" { $icon = $failIcon }
+            default { $icon = $warningIcon }
+        }
+        $lines += "  $icon [$($check.Status)] $($check.Name)"
+        $lines += "      $($check.Detail)"
+    }
+
+    $lines += ""
+    switch ($result.Status) {
+        "Pass" { $lines += "$checkIcon Estado general: Pass." }
+        "Warning" { $lines += "$warningIcon Estado general: Completado con advertencias." }
+        default { $lines += "$failIcon Estado general: Fail." }
+    }
+
+    if ($result.DegradedByMode) {
+        $lines += ""
+        $lines += "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto para validar contra un servidor real."
+    }
+
+    if ($result.TestModeApplied) {
+        $lines += ""
+        $lines += "Modo pruebas activo: estado general forzado a Pass; los resultados por check reflejan la realidad."
+    }
+
+    # Se adjunta el objeto de resultado como ultimo elemento para que el llamador
+    # pueda leer el Status real sin re-parsear el texto.
+    return [pscustomobject]@{
+        Text = ($lines -join [Environment]::NewLine)
+        Result = $result
+    }
+}
+
 $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -436,6 +537,27 @@ $xaml = @"
                         </Grid>
                     </Border>
 
+                    <Border x:Name="OperatingSystemStepCard"
+                            Background="#FFFFFF"
+                            BorderBrush="#E5E7EB"
+                            BorderThickness="1"
+                            CornerRadius="7"
+                            Padding="14"
+                            Margin="0,0,0,14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="58" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="160" />
+                                <ColumnDefinition Width="110" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="03" FontSize="18" FontWeight="Bold" Foreground="#0078D4" VerticalAlignment="Center" />
+                            <TextBlock Grid.Column="1" Text="Validar sistema operativo" FontSize="14" Foreground="#111827" VerticalAlignment="Center" />
+                            <TextBlock x:Name="OperatingSystemStatusText" Grid.Column="2" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <Button x:Name="ExecuteOperatingSystemButton" Grid.Column="3" Content="Ejecutar" Width="92" Height="32" HorizontalAlignment="Right" />
+                        </Grid>
+                    </Border>
+
                     <TextBlock Text="Resultado" FontSize="14" FontWeight="SemiBold" Foreground="#374151" Margin="0,6,0,8" />
                     <TextBox x:Name="ResultTextBox"
                              MinHeight="320"
@@ -480,10 +602,13 @@ $versionCombo = $window.FindName("VersionCombo")
 $loadStepsButton = $window.FindName("LoadStepsButton")
 $hardwareStepCard = $window.FindName("HardwareStepCard")
 $networkStepCard = $window.FindName("NetworkStepCard")
+$operatingSystemStepCard = $window.FindName("OperatingSystemStepCard")
 $hardwareStatusText = $window.FindName("HardwareStatusText")
 $networkStatusText = $window.FindName("NetworkStatusText")
+$operatingSystemStatusText = $window.FindName("OperatingSystemStatusText")
 $executeHardwareButton = $window.FindName("ExecuteHardwareButton")
 $executeNetworkButton = $window.FindName("ExecuteNetworkButton")
+$executeOperatingSystemButton = $window.FindName("ExecuteOperatingSystemButton")
 $resultTextBox = $window.FindName("ResultTextBox")
 $progressBar = $window.FindName("MainProgressBar")
 $progressLabel = $window.FindName("ProgressLabel")
@@ -516,9 +641,17 @@ $networkShadow.ShadowDepth = 1
 $networkShadow.Opacity = 0.16
 $networkStepCard.Effect = $networkShadow
 
+$operatingSystemShadow = New-Object Windows.Media.Effects.DropShadowEffect
+$operatingSystemShadow.Color = [Windows.Media.Color]::FromRgb(0, 0, 0)
+$operatingSystemShadow.BlurRadius = 12
+$operatingSystemShadow.ShadowDepth = 1
+$operatingSystemShadow.Opacity = 0.16
+$operatingSystemStepCard.Effect = $operatingSystemShadow
+
 $script:stepStatuses = @{
     Hardware = $session.HardwareStatus
     Network = $session.NetworkStatus
+    OperatingSystem = $session.OperatingSystemStatus
 }
 
 function Save-Session {
@@ -528,6 +661,7 @@ function Save-Session {
         Version = [string]$versionCombo.SelectedItem
         HardwareStatus = $script:stepStatuses.Hardware
         NetworkStatus = $script:stepStatuses.Network
+        OperatingSystemStatus = $script:stepStatuses.OperatingSystem
         LastResult = $resultTextBox.Text
         SavedAt = (Get-Date).ToString("s")
     }
@@ -538,9 +672,10 @@ function Save-Session {
 function Update-Progress {
     # Warning cuenta como paso completado (completado con advertencias).
     $completed = @($script:stepStatuses.Values | Where-Object { $_ -eq "Completed" -or $_ -eq "Warning" }).Count
-    $percent = [math]::Round(($completed / 2) * 100, 0)
+    $totalSteps = $script:stepStatuses.Count
+    $percent = [math]::Round(($completed / $totalSteps) * 100, 0)
     $progressBar.Value = $percent
-    $progressLabel.Text = "Progreso general: $percent% ($completed de 2 pasos completados)"
+    $progressLabel.Text = "Progreso general: $percent% ($completed de $totalSteps pasos completados)"
 }
 
 function Update-StepState {
@@ -555,14 +690,34 @@ function Update-StepState {
         $statusText = $hardwareStatusText
         $button = $executeHardwareButton
     }
+    elseif ($Step -eq "OperatingSystem") {
+        $statusText = $operatingSystemStatusText
+        $button = $executeOperatingSystemButton
+    }
     else {
         $statusText = $networkStatusText
         $button = $executeNetworkButton
     }
 
     $statusText.Text = Get-StatusText -Status $Status
-    $button.Visibility = if ($Status -eq "Pending") { "Visible" } else { "Collapsed" }
-    $button.IsEnabled = ($Status -eq "Pending")
+
+    # El boton permanece visible tras completar el paso para poder RE-EJECUTAR y
+    # volver a mostrar su resultado (los pasos comparten un unico panel de
+    # resultado; sin esto no se podia revisar el Paso 1 tras correr el Paso 2).
+    # Solo se oculta/deshabilita mientras el paso esta en ejecucion.
+    if ($Status -eq "Running") {
+        $button.IsEnabled = $false
+        $button.Content = "Ejecutar"
+    }
+    elseif ($Status -eq "Pending") {
+        $button.IsEnabled = $true
+        $button.Content = "Ejecutar"
+    }
+    else {
+        $button.IsEnabled = $true
+        $button.Content = "Ver / Repetir"
+    }
+    $button.Visibility = "Visible"
 
     switch ($Status) {
         "Completed" {
@@ -588,10 +743,12 @@ function Update-StepState {
 function Load-Steps {
     $script:stepStatuses.Hardware = "Pending"
     $script:stepStatuses.Network = "Pending"
+    $script:stepStatuses.OperatingSystem = "Pending"
     $resultTextBox.Text = ""
     $planSubtitle.Text = "$($productCombo.SelectedItem) - $($modelCombo.SelectedItem) - Version $($versionCombo.SelectedItem)"
     Update-StepState -Step "Hardware" -Status "Pending"
     Update-StepState -Step "Network" -Status "Pending"
+    Update-StepState -Step "OperatingSystem" -Status "Pending"
     Save-Session
 }
 
@@ -699,8 +856,44 @@ function Invoke-NetworkValidation {
     $timer.Start()
 }
 
+function Invoke-OSValidation {
+    Update-StepState -Step "OperatingSystem" -Status "Running"
+    $resultTextBox.Text = "Ejecutando validacion de sistema operativo..."
+
+    $script:osProduct = [string]$productCombo.SelectedItem
+    $script:osVersion = [string]$versionCombo.SelectedItem
+
+    $timer = New-Object Windows.Threading.DispatcherTimer
+    $timer.Interval = [TimeSpan]::FromMilliseconds(120)
+    $timer.Add_Tick({
+        param($timerSender, $timerArgs)
+
+        $timerSender.Stop()
+
+        try {
+            # El comportamiento por defecto ya no es modo pruebas: se refleja el
+            # estado real. Para forzar Pass, agregar -TestMode a esta llamada.
+            $validation = Invoke-OSRequirementsValidation -Product $script:osProduct -Version $script:osVersion
+            $resultTextBox.Text = $validation.Text
+
+            switch ($validation.Result.Status) {
+                "Pass" { Update-StepState -Step "OperatingSystem" -Status "Completed" }
+                "Warning" { Update-StepState -Step "OperatingSystem" -Status "Warning" }
+                default { Update-StepState -Step "OperatingSystem" -Status "Failed" }
+            }
+        }
+        catch {
+            $resultTextBox.Text = "Error al ejecutar la validacion de sistema operativo:`r`n$($_.Exception.Message)"
+            Update-StepState -Step "OperatingSystem" -Status "Failed"
+        }
+
+        Save-Session
+    })
+    $timer.Start()
+}
+
 function Show-Report {
-    $message = "Reporte DFE-Toolkit`n`nProducto: $($productCombo.SelectedItem)`nModelo: $($modelCombo.SelectedItem)`nVersion: $($versionCombo.SelectedItem)`nPaso 01 - Validar hardware: $(Get-StatusText -Status $script:stepStatuses.Hardware)`nPaso 02 - Validar red: $(Get-StatusText -Status $script:stepStatuses.Network)"
+    $message = "Reporte DFE-Toolkit`n`nProducto: $($productCombo.SelectedItem)`nModelo: $($modelCombo.SelectedItem)`nVersion: $($versionCombo.SelectedItem)`nPaso 01 - Validar hardware: $(Get-StatusText -Status $script:stepStatuses.Hardware)`nPaso 02 - Validar red: $(Get-StatusText -Status $script:stepStatuses.Network)`nPaso 03 - Validar sistema operativo: $(Get-StatusText -Status $script:stepStatuses.OperatingSystem)"
     [Windows.MessageBox]::Show($message, "Reporte DFE-Toolkit", "OK", "Information") | Out-Null
 }
 
@@ -735,6 +928,10 @@ $executeNetworkButton.Add_Click({
     Invoke-NetworkValidation
 })
 
+$executeOperatingSystemButton.Add_Click({
+    Invoke-OSValidation
+})
+
 $reportButton.Add_Click({
     Show-Report
 })
@@ -746,6 +943,7 @@ $window.Add_Closing({
 Update-ModelCombo
 Update-StepState -Step "Hardware" -Status $script:stepStatuses.Hardware
 Update-StepState -Step "Network" -Status $script:stepStatuses.Network
+Update-StepState -Step "OperatingSystem" -Status $script:stepStatuses.OperatingSystem
 $planSubtitle.Text = "$($productCombo.SelectedItem) - $($modelCombo.SelectedItem) - Version $($versionCombo.SelectedItem)"
 
 $window.ShowDialog() | Out-Null

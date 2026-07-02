@@ -1,0 +1,9 @@
+{
+  "description": "HP Z8 G5 con Windows 10 pero de 32 bits. La version del SO es correcta para el modelo, pero check-os-architecture da Fail real (se requiere 64 bits), degradado a Warning por validationMode informational. En enforcing daria Fail.",
+  "expectedStatus": "Warning",
+  "manufacturer": "HP",
+  "model": "HP Z8 Fury G5 Workstation Desktop PC",
+  "osCaption": "Microsoft Windows 10 Enterprise",
+  "osArchitecture": "32-bit",
+  "osVersion": "10.0.19045"
+}

@@ -2,6 +2,10 @@
   "schemaVersion": "1.0",
   "validationMode": "enforcing",
   "validationModeNotes": "Copia de prueba con validationMode enforcing para cubrir el caso bloqueante en Test-ValidateHardware.ps1. Ver manifests/hardware-requirements.json para el manifiesto real.",
+  "osBuildBaseline": {
+    "approvedBuilds": [],
+    "notes": "TODO: agregar builds/revisiones aprobados del SO. Lista vacia = check-os-build informativo."
+  },
   "source": {
     "documentTitle": "HP Indigo PrintOS Production Pro for Commercial 8.3 Software Guide",
     "documentNumber": "TS1ES-00016",

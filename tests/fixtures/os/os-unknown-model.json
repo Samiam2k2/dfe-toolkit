@@ -1,0 +1,9 @@
+{
+  "description": "Maquina virtual VMware (modelo desconocido). check-operating-system-version da Warning porque el modelo no corresponde a una configuracion conocida y remite al Paso 1; la arquitectura de 64 bits da Pass. No hay Fail, pero hay Warnings -> Status general Warning (sin degradacion; en enforcing tambien Warning).",
+  "expectedStatus": "Warning",
+  "manufacturer": "VMware, Inc.",
+  "model": "VMware Virtual Platform",
+  "osCaption": "Microsoft Windows Server 2019 Standard",
+  "osArchitecture": "64-bit",
+  "osVersion": "10.0.17763"
+}

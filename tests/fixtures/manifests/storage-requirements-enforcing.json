@@ -1,6 +1,5 @@
 {
   "schemaVersion": "1.0",
-  "validationMode": "enforcing",
   "notes": "Manifiesto de prueba para storage en modo enforcing con limites definidos.",
   "expectedDrives": [
     {

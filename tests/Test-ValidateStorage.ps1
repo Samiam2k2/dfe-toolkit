@@ -102,15 +102,16 @@ foreach ($fixture in $fixtures) {
 # --- Caso extra: modo enforcing ---
 # El manifiesto de hardware por defecto esta en validationMode "informational",
 # que degrada los Fails bloqueantes a Warning. Probamos con un manifiesto enforcing.
-$enforcingManifest = Join-Path -Path $testsRoot -ChildPath "fixtures\manifests\storage-requirements-enforcing.json"
+$hardwareEnforcing = Join-Path -Path $testsRoot -ChildPath "fixtures\manifests\hardware-requirements-enforcing.json"
+$storageEnforcing = Join-Path -Path $testsRoot -ChildPath "fixtures\manifests\storage-requirements-enforcing.json"
 $okFixture = Join-Path -Path $fixturesRoot -ChildPath "storage-ok.json"
 
-if ((Test-Path -Path $enforcingManifest -PathType Leaf) -and (Test-Path -Path $okFixture -PathType Leaf)) {
+if ((Test-Path -Path $hardwareEnforcing -PathType Leaf) -and (Test-Path -Path $storageEnforcing -PathType Leaf) -and (Test-Path -Path $okFixture -PathType Leaf)) {
     $totalCases++
     $expectedEnforcing = "Fail"
 
     try {
-        $enforcingResult = & $validatorPath -SystemInfoPath $okFixture -ManifestPath $enforcingManifest -AssessmentPath $assessmentPath -HardwareManifestPath $enforcingManifest
+        $enforcingResult = & $validatorPath -SystemInfoPath $okFixture -ManifestPath $storageEnforcing -AssessmentPath $assessmentPath -HardwareManifestPath $hardwareEnforcing
         $actualEnforcing = [string]$enforcingResult.Status
 
         if ($actualEnforcing -eq $expectedEnforcing) {

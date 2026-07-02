@@ -349,19 +349,19 @@ foreach ($expected in $expectedDrives) {
 
     $drive = $system.Drives | Where-Object { $_.Letter.ToUpper() -eq $driveLetter } | Select-Object -First 1
     if (-not $drive) {
-        $freeSpaceDetails += "unidad $driveLetter: no encontrada"
-        $freeSpaceProblems += "unidad $driveLetter: no existe"
+        $freeSpaceDetails += "unidad ${driveLetter}: no encontrada"
+        $freeSpaceProblems += "unidad ${driveLetter}: no existe"
         continue
     }
 
     $actualFree = $drive.FreeGB
     if ($null -eq $actualFree) {
-        $freeSpaceDetails += "unidad $driveLetter: libre no determinado"
-        $freeSpaceProblems += "unidad $driveLetter: no se pudo determinar espacio libre"
+        $freeSpaceDetails += "unidad ${driveLetter}: libre no determinado"
+        $freeSpaceProblems += "unidad ${driveLetter}: no se pudo determinar espacio libre"
         continue
     }
 
-    $freeSpaceDetails += "unidad $driveLetter: $actualFree GB libres"
+    $freeSpaceDetails += "unidad ${driveLetter}: $actualFree GB libres"
 
     if ($null -eq $minFreeGB) {
         $hasNullMin = $true
@@ -369,7 +369,7 @@ foreach ($expected in $expectedDrives) {
     else {
         if ($actualFree -lt $minFreeGB) {
             $hasFailedMin = $true
-            $freeSpaceProblems += "unidad $driveLetter: $actualFree GB libres (minimo $minFreeGB GB)"
+            $freeSpaceProblems += "unidad ${driveLetter}: $actualFree GB libres (minimo $minFreeGB GB)"
         }
     }
 }

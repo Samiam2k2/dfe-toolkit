@@ -168,7 +168,7 @@ $osScript = Join-Path -Path $PSScriptRoot -ChildPath "Validate-OperatingSystem.p
 $storageScript = Join-Path -Path $PSScriptRoot -ChildPath "Validate-Storage.ps1"
 $securityScript = Join-Path -Path $PSScriptRoot -ChildPath "Validate-Security.ps1"
 
-# Ejecución secuencial de los validadores individuales
+# Ejecucion secuencial de los validadores individuales
 $hwRes = $null
 try {
     $hwRes = & $hwScript -Product $Product -Version $Version -ManifestPath $ManifestPaths["hardware"] -SystemInfoPath $SystemInfoPath -TestMode:$TestMode
@@ -263,7 +263,7 @@ elseif ($hasWarning) {
     $generalStatus = "Warning"
 }
 
-# Si TestMode está activado, forzar a Pass
+# Si TestMode esta activado, forzar a Pass
 if ($TestMode) {
     $generalStatus = "Pass"
 }
@@ -292,7 +292,7 @@ foreach ($section in $sections) {
         if (-not $icon) { $icon = "$questionIcon Unknown" }
         
         $itemText = "  $($check.Name): $($check.Value)"
-        # Pad con puntos para alineación
+        # Pad con puntos para alineacion
         $dotCount = 45 - $itemText.Length
         if ($dotCount -lt 2) { $dotCount = 2 }
         $dots = "." * $dotCount

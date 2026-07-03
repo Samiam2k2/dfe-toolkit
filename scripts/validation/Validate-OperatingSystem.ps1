@@ -267,17 +267,17 @@ foreach ($rule in $allRules) {
 $isGeneralValidOS = Test-PatternList -Value $osCaption -Patterns $generalOsPatterns
 
 if (-not $isGeneralValidOS) {
-    # PASO A: SO no válido para Production Pro en general
-    $checks += New-CheckResult -Meta $osVersionMeta -Status "Fail" -Detail "SO detectado '${osCaption}' no es válido para Production Pro (se esperaba Windows 10 o Windows Server 2019)."
+    # PASO A: SO no valido para Production Pro en general
+    $checks += New-CheckResult -Meta $osVersionMeta -Status "Fail" -Detail "SO detectado '${osCaption}' no es valido para Production Pro (se esperaba Windows 10 o Windows Server 2019)."
 }
 else {
-    # PASO B: El SO es válido en general, evaluar el modelo del servidor
+    # PASO B: El SO es valido en general, evaluar el modelo del servidor
     if ($modelMatchedRules.Count -eq 0) {
         # Modelo NO reconocido
-        $checks += New-CheckResult -Meta $osVersionMeta -Status "Pass" -Detail "SO '${osCaption}' válido para Production Pro. El modelo '${model}' no está en la lista de hardware aprobado; la compatibilidad modelo↔SO se verificará en el Paso 1 de hardware."
+        $checks += New-CheckResult -Meta $osVersionMeta -Status "Pass" -Detail "SO '${osCaption}' valido para Production Pro. El modelo '${model}' no esta en la lista de hardware aprobado; la compatibilidad modelo<->SO se verificara en el Paso 1 de hardware."
     }
     else {
-        # Modelo SÍ reconocido, validar combinación específica
+        # Modelo SI reconocido, validar combinacion especifica
         $approvedOsPatterns = @()
         foreach ($rule in $modelMatchedRules) {
             foreach ($pattern in @($rule.requiredOperatingSystemPatterns)) {

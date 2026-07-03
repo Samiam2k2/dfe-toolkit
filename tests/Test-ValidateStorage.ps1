@@ -74,7 +74,7 @@ foreach ($fixture in $fixtures) {
 
     try {
         # Como los validadores cargan hardware-requirements.json para saber el validationMode,
-        # le pasamos -HardwareManifestPath explícitamente para que apunte al manifiesto local del repo
+        # le pasamos -HardwareManifestPath explicitamente para que apunte al manifiesto local del repo
         $result = & $validatorPath -SystemInfoPath $fixture.FullName -ManifestPath $manifestPath -AssessmentPath $assessmentPath -HardwareManifestPath $hardwareManifestPath
     }
     catch {

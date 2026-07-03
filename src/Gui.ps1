@@ -244,7 +244,7 @@ $xaml = @"
                              </Grid.ColumnDefinitions>
                              <TextBlock Text="02" FontSize="18" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
                              <TextBlock Grid.Column="1" Text="Instalar prerrequisitos" FontSize="14" Foreground="#777777" VerticalAlignment="Center" />
-                             <TextBlock Grid.Column="2" Text="Próximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="2" Text="Proximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
                          </Grid>
                      </Border>
 
@@ -263,7 +263,7 @@ $xaml = @"
                              </Grid.ColumnDefinitions>
                              <TextBlock Text="03" FontSize="18" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
                              <TextBlock Grid.Column="1" Text="Instalar software" FontSize="14" Foreground="#777777" VerticalAlignment="Center" />
-                             <TextBlock Grid.Column="2" Text="Próximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="2" Text="Proximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
                          </Grid>
                      </Border>
 
@@ -282,7 +282,7 @@ $xaml = @"
                              </Grid.ColumnDefinitions>
                              <TextBlock Text="04" FontSize="18" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
                              <TextBlock Grid.Column="1" Text="Backup en blanco" FontSize="14" Foreground="#777777" VerticalAlignment="Center" />
-                             <TextBlock Grid.Column="2" Text="Próximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="2" Text="Proximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
                          </Grid>
                      </Border>
 
@@ -301,7 +301,7 @@ $xaml = @"
                              </Grid.ColumnDefinitions>
                              <TextBlock Text="05" FontSize="18" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
                              <TextBlock Grid.Column="1" Text="Cargar licencia" FontSize="14" Foreground="#777777" VerticalAlignment="Center" />
-                             <TextBlock Grid.Column="2" Text="Próximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="2" Text="Proximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
                          </Grid>
                      </Border>
 
@@ -320,7 +320,7 @@ $xaml = @"
                              </Grid.ColumnDefinitions>
                              <TextBlock Text="06" FontSize="18" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
                              <TextBlock Grid.Column="1" Text="Pruebas" FontSize="14" Foreground="#777777" VerticalAlignment="Center" />
-                             <TextBlock Grid.Column="2" Text="Próximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="2" Text="Proximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
                          </Grid>
                      </Border>
 
@@ -339,7 +339,7 @@ $xaml = @"
                              </Grid.ColumnDefinitions>
                              <TextBlock Text="07" FontSize="18" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
                              <TextBlock Grid.Column="1" Text="Assessment final" FontSize="14" Foreground="#777777" VerticalAlignment="Center" />
-                             <TextBlock Grid.Column="2" Text="Próximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="2" Text="Proximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
                          </Grid>
                      </Border>
 
@@ -535,14 +535,14 @@ function Update-VersionSteps {
                 $script:stepStatuses.Specs = "Pending"
                 $resultTextBox.Text = ""
             } else {
-                # Cargar el resultado almacenado si se está restaurando
+                # Cargar el resultado almacenado si se esta restaurando
                 $resultTextBox.Text = $session.LastResult
             }
 
             Update-StepState -Step "Specs" -Status $script:stepStatuses.Specs
         }
         else {
-            $stepsNotAvailableText.Text = "Pasos no disponibles para $prodName $modelName $verName. Próximamente."
+            $stepsNotAvailableText.Text = "Pasos no disponibles para $prodName $modelName $verName. Proximamente."
             $stepsNotAvailableText.Visibility = "Visible"
 
             $specsStepCard.Visibility = "Collapsed"

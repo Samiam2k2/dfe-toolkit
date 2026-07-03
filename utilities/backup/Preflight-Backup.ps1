@@ -434,7 +434,7 @@ if ($TestMode) {
     $finalStatus = "Pass"
 }
 
-# --- Resúmenes de campos de salida específicos ---
+# --- Resumenes de campos de salida especificos ---
 $foundList = @()
 $missingList = @()
 foreach ($s in $inventory.Sources) {

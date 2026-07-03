@@ -73,10 +73,10 @@ foreach ($fixtureName in $fixtures) {
         # un Fail bloqueante se degradaria pero no tenemos Fails bloqueantes.
         # check-hosts-file puede dar Warning o Pass. En cualquier caso, comparamos contra expectedStatus.
         if ($actual -eq $expected) {
-            Write-Host "$passIcon $fixtureName: esperado=$expected obtenido=$actual" -ForegroundColor Green
+            Write-Host "$passIcon ${fixtureName}: esperado=$expected obtenido=$actual" -ForegroundColor Green
         }
         else {
-            Write-Host "$failIcon $fixtureName: esperado=$expected obtenido=$actual" -ForegroundColor Red
+            Write-Host "$failIcon ${fixtureName}: esperado=$expected obtenido=$actual" -ForegroundColor Red
             $failedCases++
         }
 
@@ -85,7 +85,7 @@ foreach ($fixtureName in $fixtures) {
         Write-Host ""
     }
     catch {
-        Write-Host "$failIcon $fixtureName: error al ejecutar el orquestador: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "$failIcon ${fixtureName}: error al ejecutar el orquestador: $($_.Exception.Message)" -ForegroundColor Red
         $failedCases++
     }
 }

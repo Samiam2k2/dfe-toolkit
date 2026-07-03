@@ -254,9 +254,23 @@ $checks = @()
 $osVersionMeta = Get-CheckMeta -Assessment $assessment -Id "check-operating-system-version"
 
 if ($modelMatchedRules.Count -eq 0) {
-    # El modelo no corresponde a ninguna configuracion conocida. NO se marca Fail:
-    # la incompatibilidad de hardware ya la reporta el Paso 1; aqui solo se avisa.
-    $checks += New-CheckResult -Meta $osVersionMeta -Status "Warning" -Detail "No se pudo determinar el SO esperado porque el modelo '$model' no corresponde a una configuracion de hardware conocida. Valide primero el hardware (Paso 1)."
+    # El modelo no corresponde a ninguna configuracion conocida.
+    # Extraemos todos los patrones de SO de todas las reglas del manifiesto.
+    $generalOsPatterns = @()
+    foreach ($rule in @($productRules.rules.newInstallation.allowedHardware) + @($productRules.rules.upgrade.allowedHardware)) {
+        foreach ($pattern in @($rule.requiredOperatingSystemPatterns)) {
+            if ($generalOsPatterns -notcontains $pattern) {
+                $generalOsPatterns += $pattern
+            }
+        }
+    }
+
+    if (Test-PatternList -Value $osCaption -Patterns $generalOsPatterns) {
+        $checks += New-CheckResult -Meta $osVersionMeta -Status "Warning" -Detail "El modelo '${model}' no está en la lista de hardware aprobado (valide Paso 1), pero el SO detectado '${osCaption}' es válido para Production Pro en general."
+    }
+    else {
+        $checks += New-CheckResult -Meta $osVersionMeta -Status "Fail" -Detail "El modelo '${model}' no está en la lista de hardware aprobado (valide Paso 1), y el SO detectado '${osCaption}' no es un SO válido para Production Pro (se esperaba Windows 10 o Windows Server 2019)."
+    }
 }
 else {
     $approvedOsPatterns = @()

@@ -269,11 +269,17 @@ if ($TestMode) {
 }
 
 # Generar reporte textual en formato de checklist
+$checkIcon = [char]::ConvertFromUtf32(0x2705)
+$warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
+$failIcon = [char]::ConvertFromUtf32(0x274C)
+$infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
+$questionIcon = [char]::ConvertFromUtf32(0x2753)
+
 $statusIcons = @{
-    "Pass" = "✅ Ok"
-    "Warning" = "⚠️ Warning"
-    "Fail" = "❌ Fail"
-    "Info" = "ℹ️ Info"
+    "Pass" = "$checkIcon Ok"
+    "Warning" = "$warningIcon Warning"
+    "Fail" = "$failIcon Fail"
+    "Info" = "$infoIcon Info"
 }
 
 $lines = @()
@@ -283,7 +289,7 @@ foreach ($section in $sections) {
     
     foreach ($check in $section.Checks) {
         $icon = $statusIcons[$check.Status]
-        if (-not $icon) { $icon = "❓ Unknown" }
+        if (-not $icon) { $icon = "$questionIcon Unknown" }
         
         $itemText = "  $($check.Name): $($check.Value)"
         # Pad con puntos para alineación
@@ -295,12 +301,12 @@ foreach ($section in $sections) {
     }
 }
 
-$overallStatusText = "✅ Completado"
+$overallStatusText = "$checkIcon Completado"
 if ($generalStatus -eq "Fail") {
-    $overallStatusText = "❌ Fallido"
+    $overallStatusText = "$failIcon Fallido"
 }
 elseif ($generalStatus -eq "Warning") {
-    $overallStatusText = "⚠️ Completado con advertencias"
+    $overallStatusText = "$warningIcon Completado con advertencias"
 }
 
 $lines += ""

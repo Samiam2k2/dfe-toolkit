@@ -28,8 +28,8 @@ else {
 
 $projectRoot = Split-Path -Parent $testsRoot
 $validatorPath = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-OperatingSystem.ps1"
-$manifestPath = Join-Path -Path $projectRoot -ChildPath "manifests\hardware-requirements.json"
-$assessmentPath = Join-Path -Path $projectRoot -ChildPath "manifests\assessment-checks.json"
+$manifestPath = Join-Path -Path $projectRoot -ChildPath "manifests\production-pro\8.3\hardware.json"
+$assessmentPath = Join-Path -Path $projectRoot -ChildPath "manifests\production-pro\8.3\assessment-checks.json"
 $fixturesRoot = Join-Path -Path $testsRoot -ChildPath "fixtures\os"
 
 if (-not (Test-Path -Path $validatorPath -PathType Leaf)) {

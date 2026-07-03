@@ -1,0 +1,129 @@
+{
+  "schemaVersion": "1.0",
+  "id": "commercial-8.3-new-up8",
+  "name": "Production Pro Commercial 8.3 - New/Reimage Installation + UP8",
+  "product": "Production Pro Commercial",
+  "version": "8.3",
+  "updatePack": "UP8",
+  "installType": "new",
+  "status": "approved",
+  "channel": "stable",
+  "estimatedTimeMinutes": 120,
+  "requiresAdmin": true,
+  "requiresInteractiveSession": true,
+  "stateful": true,
+  "resumeAfterReboot": true,
+  "workingDirectory": "C:\\ProgramData\\DFE-Toolkit",
+  "cacheDirectory": "C:\\ProgramData\\DFE-Toolkit\\cache",
+  "logDirectory": "C:\\ProgramData\\DFE-Toolkit\\logs",
+  "stateDirectory": "C:\\ProgramData\\DFE-Toolkit\\state",
+  "reportDirectory": "C:\\ProgramData\\DFE-Toolkit\\reports",
+  "description": "Initial MVP recipe for a new or reimaged installation of HP PrintOS Production Pro Commercial 8.3 with Update Pack 8.",
+  "preflight": {
+    "requireAdmin": true,
+    "requireInternet": true,
+    "requireSDrive": true,
+    "minimumFreeSpaceGB": 10,
+    "supportedOperatingSystems": [
+      "Windows Server 2019",
+      "Windows 10"
+    ],
+    "unsupportedConditions": [
+      {
+        "id": "series-2-press",
+        "severity": "blocked",
+        "message": "Production Pro 8.x is not supported to drive Series 2 presses. Stop the installation and contact the appropriate HP support resources."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "order": 1,
+      "id": "confirm-preinstallation-checklist",
+      "name": "Confirm pre-installation checklist",
+      "type": "manual-confirmation",
+      "required": true,
+      "message": "Confirm that customer preparation, PrintOS administrator credentials, RIP license, supported hardware and site requirements have been reviewed before continuing.",
+      "onFailure": "stop"
+    },
+    {
+      "order": 2,
+      "id": "download-packages",
+      "name": "Download required packages",
+      "type": "download",
+      "packageIds": [
+        "commercial-8.3-prerequisites",
+        "commercial-8.3-base",
+        "commercial-8.3-up8",
+        "validate-installation"
+      ],
+      "onFailure": "stop"
+    },
+    {
+      "order": 3,
+      "id": "verify-hashes",
+      "name": "Verify package integrity",
+      "type": "hash-validation",
+      "packageIds": [
+        "commercial-8.3-prerequisites",
+        "commercial-8.3-base",
+        "commercial-8.3-up8",
+        "validate-installation"
+      ],
+      "onFailure": "stop"
+    },
+    {
+      "order": 4,
+      "id": "install-prerequisites",
+      "name": "Install Production Pro 8.3 prerequisites",
+      "type": "installer",
+      "packageId": "commercial-8.3-prerequisites",
+      "requiresReboot": true,
+      "resumeAfterReboot": true,
+      "onFailure": "stop",
+      "notes": "The prerequisites installer may require a server reboot. The toolkit must save state before rebooting and continue from the next step after resume."
+    },
+    {
+      "order": 5,
+      "id": "install-base",
+      "name": "Install Production Pro Commercial 8.3 base software",
+      "type": "installer",
+      "packageId": "commercial-8.3-base",
+      "requiresReboot": true,
+      "resumeAfterReboot": true,
+      "onFailure": "stop",
+      "notes": "The base installer is expected to run interactively in the MVP. The engineer completes the installer screens manually."
+    },
+    {
+      "order": 6,
+      "id": "install-up8",
+      "name": "Install Production Pro Commercial 8.3 UP8",
+      "type": "installer",
+      "packageId": "commercial-8.3-up8",
+      "requiresReboot": false,
+      "resumeAfterReboot": false,
+      "onFailure": "stop",
+      "notes": "Install the approved Update Pack after the base Production Pro installation has completed."
+    },
+    {
+      "order": 7,
+      "id": "validate-installation",
+      "name": "Validate installation",
+      "type": "script",
+      "packageId": "validate-installation",
+      "requiresReboot": false,
+      "resumeAfterReboot": false,
+      "onFailure": "warn",
+      "notes": "Run the validation script and include results in the final report."
+    },
+    {
+      "order": 8,
+      "id": "generate-report",
+      "name": "Generate final installation report",
+      "type": "report",
+      "requiresReboot": false,
+      "resumeAfterReboot": false,
+      "onFailure": "warn"
+    }
+  ]
+}

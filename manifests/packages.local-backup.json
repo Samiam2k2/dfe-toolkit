@@ -1,0 +1,133 @@
+{
+  "schemaVersion": "1.0",
+  "packageManifestVersion": "2026.06.02",
+  "description": "Initial package manifest for DFE Toolkit MVP. Large installer binaries must be stored outside GitHub, preferably in private Azure Blob Storage.",
+  "packages": [
+    {
+      "id": "dummy-package-test",
+      "name": "Dummy Package Test",
+      "product": "DFE Toolkit",
+      "version": "test",
+      "updatePack": null,
+      "type": "test",
+      "fileType": "txt",
+      "fileName": "dummy-package.txt",
+      "source": "azure-blob",
+      "url": "https://dfetoolkitsamiam2026.blob.core.windows.net/dfe-packages/test/dummy-package.txt?sp=r&st=2026-06-03T01:45:20Z&se=2026-06-03T10:00:20Z&spr=https&sv=2026-02-06&sr=b&sig=EeVvO27eqZzpFBNRKi2SmzPciEhutLl8ZI1uU0bQGjw%3D",
+      "sha256": "F2AAC0E192A6E81D2630269AA0999771E5FA5D94190DB245826B2413503BE085",
+      "sizeBytes": 47,
+      "interactive": false,
+      "requiresAdmin": false,
+      "requiresReboot": false,
+      "resumeAfterReboot": false,
+      "expectedExitCodes": [
+        0
+      ],
+      "cacheSubfolder": "test",
+      "status": "testing",
+      "notes": "Safe dummy package for Azure Blob download and SHA256 validation testing. Replace URL only in local working copy with a temporary SAS URL; do not commit SAS tokens."
+    },
+    {
+      "id": "commercial-8.3-prerequisites",
+      "name": "Production Pro Commercial 8.3 Prerequisites",
+      "product": "Production Pro Commercial",
+      "version": "8.3",
+      "updatePack": null,
+      "type": "installer",
+      "fileType": "exe",
+      "fileName": "dfe-prerequisites-8.3.exe",
+      "source": "azure-blob",
+      "url": "AZURE_BLOB_URL_PLACEHOLDER/commercial/8.3/prerequisites/dfe-prerequisites-8.3.exe",
+      "sha256": "SHA256_PLACEHOLDER",
+      "sizeBytes": 0,
+      "interactive": true,
+      "requiresAdmin": true,
+      "requiresReboot": true,
+      "resumeAfterReboot": true,
+      "expectedExitCodes": [
+        0,
+        3010,
+        1641
+      ],
+      "cacheSubfolder": "commercial/8.3/prerequisites",
+      "status": "approved",
+      "notes": "Placeholder entry. Replace URL, SHA256 and sizeBytes after uploading the real installer to Azure Blob Storage."
+    },
+    {
+      "id": "commercial-8.3-base",
+      "name": "Production Pro Commercial 8.3 Base Installer",
+      "product": "Production Pro Commercial",
+      "version": "8.3",
+      "updatePack": null,
+      "type": "installer",
+      "fileType": "exe",
+      "fileName": "dfe-setup-8.3.exe",
+      "source": "azure-blob",
+      "url": "AZURE_BLOB_URL_PLACEHOLDER/commercial/8.3/base/dfe-setup-8.3.exe",
+      "sha256": "SHA256_PLACEHOLDER",
+      "sizeBytes": 0,
+      "interactive": true,
+      "requiresAdmin": true,
+      "requiresReboot": true,
+      "resumeAfterReboot": true,
+      "expectedExitCodes": [
+        0,
+        3010,
+        1641
+      ],
+      "cacheSubfolder": "commercial/8.3/base",
+      "status": "approved",
+      "notes": "Placeholder entry. Replace URL, SHA256 and sizeBytes after uploading the real installer to Azure Blob Storage."
+    },
+    {
+      "id": "commercial-8.3-up8",
+      "name": "Production Pro Commercial 8.3 Update Pack 8",
+      "product": "Production Pro Commercial",
+      "version": "8.3",
+      "updatePack": "UP8",
+      "type": "installer",
+      "fileType": "exe",
+      "fileName": "commercial-8.3-up8.exe",
+      "source": "azure-blob",
+      "url": "AZURE_BLOB_URL_PLACEHOLDER/commercial/8.3/update-packs/UP8/commercial-8.3-up8.exe",
+      "sha256": "SHA256_PLACEHOLDER",
+      "sizeBytes": 0,
+      "interactive": true,
+      "requiresAdmin": true,
+      "requiresReboot": false,
+      "resumeAfterReboot": false,
+      "expectedExitCodes": [
+        0,
+        3010,
+        1641
+      ],
+      "cacheSubfolder": "commercial/8.3/update-packs/UP8",
+      "status": "approved",
+      "notes": "Placeholder entry. Replace URL, SHA256 and sizeBytes after uploading the real Update Pack to Azure Blob Storage."
+    },
+    {
+      "id": "validate-installation",
+      "name": "Validate Production Pro Installation",
+      "product": "Production Pro",
+      "version": "0.1.0",
+      "updatePack": null,
+      "type": "script",
+      "fileType": "ps1",
+      "fileName": "validate-installation.ps1",
+      "source": "github",
+      "url": "scripts/validation/validate-installation.ps1",
+      "sha256": "SHA256_PLACEHOLDER",
+      "sizeBytes": 0,
+      "interactive": false,
+      "requiresAdmin": true,
+      "requiresReboot": false,
+      "resumeAfterReboot": false,
+      "expectedExitCodes": [
+        0
+      ],
+      "cacheSubfolder": "scripts/validation",
+      "status": "approved",
+      "notes": "Placeholder validation script entry. SHA256 should be updated once the script content is finalized."
+    }
+  ]
+}

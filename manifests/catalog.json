@@ -1,0 +1,67 @@
+{
+  "version": "1.0",
+  "products": [
+    {
+      "id": "production-pro",
+      "displayName": "Production Pro",
+      "models": [
+        {
+          "id": "commercial",
+          "displayName": "Commercial",
+          "versions": [
+            {
+              "id": "8.3",
+              "displayName": "8.3",
+              "manifests": {
+                "hardware": "manifests/production-pro/8.3/hardware.json",
+                "network": "manifests/production-pro/8.3/network.json",
+                "storage": "manifests/production-pro/8.3/storage.json",
+                "security": "manifests/production-pro/8.3/security.json",
+                "backup": "manifests/production-pro/8.3/backup.json",
+                "assessment": "manifests/production-pro/8.3/assessment-checks.json"
+              },
+              "stepsAvailable": true
+            }
+          ]
+        },
+        {
+          "id": "lp",
+          "displayName": "L&P",
+          "versions": [
+            {
+              "id": "8.3",
+              "displayName": "8.3",
+              "manifests": {
+                "hardware": "manifests/production-pro/8.3/hardware.json",
+                "network": "manifests/production-pro/8.3/network.json",
+                "storage": "manifests/production-pro/8.3/storage.json",
+                "security": "manifests/production-pro/8.3/security.json",
+                "backup": "manifests/production-pro/8.3/backup.json",
+                "assessment": "manifests/production-pro/8.3/assessment-checks.json"
+              },
+              "stepsAvailable": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "composer",
+      "displayName": "Composer",
+      "models": [
+        {
+          "id": "composer-server",
+          "displayName": "Composer Server",
+          "versions": [
+            {
+              "id": "10.1",
+              "displayName": "10.1",
+              "manifests": {},
+              "stepsAvailable": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

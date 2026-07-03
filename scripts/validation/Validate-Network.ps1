@@ -63,13 +63,13 @@ function Get-NetworkRequirementsManifest {
     }
 
     if ($projectRoot) {
-        $localPath = Join-Path -Path $projectRoot -ChildPath "manifests\network-requirements.json"
+        $localPath = Join-Path -Path $projectRoot -ChildPath "manifests\production-pro\8.3\network.json"
         if (Test-Path -Path $localPath -PathType Leaf) {
             return Get-Content -Path $localPath -Raw | ConvertFrom-Json
         }
     }
 
-    $requirementsUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/manifests/network-requirements.json?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $requirementsUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/manifests/production-pro/8.3/network.json?cacheBust=$([DateTime]::UtcNow.Ticks)"
     return Invoke-RestMethod -Uri $requirementsUrl -Headers @{
         "Cache-Control" = "no-cache"
         "Pragma" = "no-cache"
@@ -94,13 +94,13 @@ function Get-AssessmentChecksManifest {
     }
 
     if ($projectRoot) {
-        $localPath = Join-Path -Path $projectRoot -ChildPath "manifests\assessment-checks.json"
+        $localPath = Join-Path -Path $projectRoot -ChildPath "manifests\production-pro\8.3\assessment-checks.json"
         if (Test-Path -Path $localPath -PathType Leaf) {
             return Get-Content -Path $localPath -Raw | ConvertFrom-Json
         }
     }
 
-    $assessmentUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/manifests/assessment-checks.json?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $assessmentUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/manifests/production-pro/8.3/assessment-checks.json?cacheBust=$([DateTime]::UtcNow.Ticks)"
     return Invoke-RestMethod -Uri $assessmentUrl -Headers @{
         "Cache-Control" = "no-cache"
         "Pragma" = "no-cache"

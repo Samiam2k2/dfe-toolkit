@@ -26,8 +26,8 @@ else {
 
 $projectRoot = Split-Path -Parent $testsRoot
 $validatorPath = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Network.ps1"
-$manifestPath = Join-Path -Path $projectRoot -ChildPath "manifests\network-requirements.json"
-$assessmentPath = Join-Path -Path $projectRoot -ChildPath "manifests\assessment-checks.json"
+$manifestPath = Join-Path -Path $projectRoot -ChildPath "manifests\production-pro\8.3\network.json"
+$assessmentPath = Join-Path -Path $projectRoot -ChildPath "manifests\production-pro\8.3\assessment-checks.json"
 $fixturesRoot = Join-Path -Path $testsRoot -ChildPath "fixtures\network"
 
 if (-not (Test-Path -Path $validatorPath -PathType Leaf)) {

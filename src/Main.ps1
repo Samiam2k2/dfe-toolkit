@@ -66,7 +66,8 @@ function Test-DFEHardware {
     [CmdletBinding()]
     param(
         [string]$Product = "Production Pro",
-        [string]$Version = "8.3"
+        [string]$Version = "8.3",
+        [string]$ManifestPath
     )
 
     $passIcon = [char]::ConvertFromUtf32(0x2705)
@@ -81,7 +82,14 @@ function Test-DFEHardware {
 
     try {
         $validator = Get-ValidateHardwareCommand
-        $result = & $validator.Command -Product $Product -Version $Version
+        $arguments = @{
+            Product = $Product
+            Version = $Version
+        }
+        if ($ManifestPath) {
+            $arguments["ManifestPath"] = $ManifestPath
+        }
+        $result = & $validator.Command @arguments
     }
     catch {
         Write-Host "No se pudo ejecutar la validacion de hardware: $($_.Exception.Message)" -ForegroundColor Red
@@ -161,7 +169,10 @@ function Get-ValidateNetworkCommand {
 
 function Test-DFENetwork {
     [CmdletBinding()]
-    param()
+    param(
+        [string]$ManifestPath,
+        [string]$AssessmentPath
+    )
 
     $passIcon = [char]::ConvertFromUtf32(0x2705)
     $failIcon = [char]::ConvertFromUtf32(0x274C)
@@ -175,7 +186,14 @@ function Test-DFENetwork {
 
     try {
         $validator = Get-ValidateNetworkCommand
-        $result = & $validator.Command
+        $arguments = @{}
+        if ($ManifestPath) {
+            $arguments["ManifestPath"] = $ManifestPath
+        }
+        if ($AssessmentPath) {
+            $arguments["AssessmentPath"] = $AssessmentPath
+        }
+        $result = & $validator.Command @arguments
     }
     catch {
         Write-Host "No se pudo ejecutar la validacion de red: $($_.Exception.Message)" -ForegroundColor Red
@@ -260,7 +278,9 @@ function Test-DFEOperatingSystem {
     [CmdletBinding()]
     param(
         [string]$Product = "Production Pro",
-        [string]$Version = "8.3"
+        [string]$Version = "8.3",
+        [string]$ManifestPath,
+        [string]$AssessmentPath
     )
 
     $passIcon = [char]::ConvertFromUtf32(0x2705)
@@ -275,7 +295,17 @@ function Test-DFEOperatingSystem {
 
     try {
         $validator = Get-ValidateOperatingSystemCommand
-        $result = & $validator.Command -Product $Product -Version $Version
+        $arguments = @{
+            Product = $Product
+            Version = $Version
+        }
+        if ($ManifestPath) {
+            $arguments["ManifestPath"] = $ManifestPath
+        }
+        if ($AssessmentPath) {
+            $arguments["AssessmentPath"] = $AssessmentPath
+        }
+        $result = & $validator.Command @arguments
     }
     catch {
         Write-Host "No se pudo ejecutar la validacion de sistema operativo: $($_.Exception.Message)" -ForegroundColor Red
@@ -357,7 +387,10 @@ function Test-DFEStorage {
     param(
         [string]$Product = "Production Pro",
         [string]$Version = "8.3",
-        [string]$Profile = "SystemManager"
+        [string]$Profile = "SystemManager",
+        [string]$ManifestPath,
+        [string]$AssessmentPath,
+        [string]$HardwareManifestPath
     )
 
     $passIcon = [char]::ConvertFromUtf32(0x2705)
@@ -373,7 +406,21 @@ function Test-DFEStorage {
 
     try {
         $validator = Get-ValidateStorageCommand
-        $result = & $validator.Command -Product $Product -Version $Version -Profile $Profile
+        $arguments = @{
+            Product = $Product
+            Version = $Version
+            Profile = $Profile
+        }
+        if ($ManifestPath) {
+            $arguments["ManifestPath"] = $ManifestPath
+        }
+        if ($AssessmentPath) {
+            $arguments["AssessmentPath"] = $AssessmentPath
+        }
+        if ($HardwareManifestPath) {
+            $arguments["HardwareManifestPath"] = $HardwareManifestPath
+        }
+        $result = & $validator.Command @arguments
     }
     catch {
         Write-Host "No se pudo ejecutar la validacion de almacenamiento: $($_.Exception.Message)" -ForegroundColor Red
@@ -466,7 +513,10 @@ function Test-DFESecurity {
     [CmdletBinding()]
     param(
         [string]$Product = "Production Pro",
-        [string]$Version = "8.3"
+        [string]$Version = "8.3",
+        [string]$ManifestPath,
+        [string]$AssessmentPath,
+        [string]$HardwareManifestPath
     )
 
     $passIcon = [char]::ConvertFromUtf32(0x2705)
@@ -482,7 +532,20 @@ function Test-DFESecurity {
 
     try {
         $validator = Get-ValidateSecurityCommand
-        $result = & $validator.Command -Product $Product -Version $Version
+        $arguments = @{
+            Product = $Product
+            Version = $Version
+        }
+        if ($ManifestPath) {
+            $arguments["ManifestPath"] = $ManifestPath
+        }
+        if ($AssessmentPath) {
+            $arguments["AssessmentPath"] = $AssessmentPath
+        }
+        if ($HardwareManifestPath) {
+            $arguments["HardwareManifestPath"] = $HardwareManifestPath
+        }
+        $result = & $validator.Command @arguments
     }
     catch {
         Write-Host "No se pudo ejecutar la validacion de seguridad: $($_.Exception.Message)" -ForegroundColor Red
@@ -583,7 +646,9 @@ function Test-DFEBackup {
     [CmdletBinding()]
     param(
         [string]$Product = "Production Pro",
-        [string]$Version = "8.3"
+        [string]$Version = "8.3",
+        [string]$ManifestPath,
+        [string]$HardwareManifestPath
     )
 
     $passIcon = [char]::ConvertFromUtf32(0x2705)
@@ -610,7 +675,18 @@ function Test-DFEBackup {
 
     try {
         $validator = Get-ValidateBackupCommand
-        $result = & $validator.Command -Product $Product -Version $Version -Profile $profile
+        $arguments = @{
+            Product = $Product
+            Version = $Version
+            Profile = $profile
+        }
+        if ($ManifestPath) {
+            $arguments["ManifestPath"] = $ManifestPath
+        }
+        if ($HardwareManifestPath) {
+            $arguments["HardwareManifestPath"] = $HardwareManifestPath
+        }
+        $result = & $validator.Command @arguments
     }
     catch {
         Write-Host "No se pudo ejecutar el preflight de backup: $($_.Exception.Message)" -ForegroundColor Red
@@ -703,9 +779,126 @@ function Show-DemoSummary {
     Write-Host "$ideaIcon Este es un modo de demostraci$($oAcuteLower)n." -ForegroundColor Cyan
 }
 
+function Get-CatalogManifest {
+    [CmdletBinding()]
+    param()
+
+    $projectRoot = $null
+    if ($PSScriptRoot) {
+        $projectRoot = Split-Path -Parent $PSScriptRoot
+    }
+    else {
+        $projectRoot = (Get-Location).Path
+    }
+
+    if ($projectRoot) {
+        $localPath = Join-Path -Path $projectRoot -ChildPath "manifests\catalog.json"
+        if (Test-Path -Path $localPath -PathType Leaf) {
+            return Get-Content -Path $localPath -Raw | ConvertFrom-Json
+        }
+    }
+
+    $catalogUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/manifests/catalog.json?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    return Invoke-RestMethod -Uri $catalogUrl -Headers @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    } -ErrorAction Stop
+}
+
+function Select-Installation {
+    $script:catalog = Get-CatalogManifest
+
+    $validSelection = $false
+    while (-not $validSelection) {
+        Write-Host ""
+        Write-Host "--- Seleccion de instalacion ---" -ForegroundColor Cyan
+
+        # 1. Product Selection
+        Write-Host "Seleccione un Producto:"
+        $products = @($script:catalog.products)
+        for ($i = 0; $i -lt $products.Count; $i++) {
+            Write-Host "$($i + 1)) $($products[$i].displayName)"
+        }
+        $prodIdx = -1
+        while ($prodIdx -lt 0 -or $prodIdx -ge $products.Count) {
+            $inputVal = Read-Host "Seleccione (1-$($products.Count))"
+            if ($inputVal -match "^\d+$") {
+                $prodIdx = [int]$inputVal - 1
+            }
+        }
+        $script:selectedProduct = $products[$prodIdx]
+
+        # 2. Model Selection
+        Write-Host ""
+        Write-Host "Seleccione un Modelo:"
+        $models = @($script:selectedProduct.models)
+        for ($i = 0; $i -lt $models.Count; $i++) {
+            Write-Host "$($i + 1)) $($models[$i].displayName)"
+        }
+        $modelIdx = -1
+        while ($modelIdx -lt 0 -or $modelIdx -ge $models.Count) {
+            $inputVal = Read-Host "Seleccione (1-$($models.Count))"
+            if ($inputVal -match "^\d+$") {
+                $modelIdx = [int]$inputVal - 1
+            }
+        }
+        $script:selectedModel = $models[$modelIdx]
+
+        # 3. Version Selection
+        Write-Host ""
+        Write-Host "Seleccione una Version:"
+        $versions = @($script:selectedModel.versions)
+        for ($i = 0; $i -lt $versions.Count; $i++) {
+            Write-Host "$($i + 1)) $($versions[$i].displayName)"
+        }
+        $verIdx = -1
+        while ($verIdx -lt 0 -or $verIdx -ge $versions.Count) {
+            $inputVal = Read-Host "Seleccione (1-$($versions.Count))"
+            if ($inputVal -match "^\d+$") {
+                $verIdx = [int]$inputVal - 1
+            }
+        }
+        $script:selectedVersion = $versions[$verIdx]
+
+        # Check stepsAvailable
+        if ($script:selectedVersion.stepsAvailable) {
+            $validSelection = $true
+            # Save selected details globally/script-wide
+            $script:selectedProductName = $script:selectedProduct.displayName
+            $script:selectedModelName = $script:selectedModel.displayName
+            $script:selectedVersionName = $script:selectedVersion.displayName
+
+            # Resolve paths
+            $projectRoot = $null
+            if ($PSScriptRoot) {
+                $projectRoot = Split-Path -Parent $PSScriptRoot
+            }
+            else {
+                $projectRoot = (Get-Location).Path
+            }
+
+            $script:hardwareManifestPath = if ($script:selectedVersion.manifests.hardware) { Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.hardware }
+            $script:networkManifestPath = if ($script:selectedVersion.manifests.network) { Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.network }
+            $script:storageManifestPath = if ($script:selectedVersion.manifests.storage) { Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.storage }
+            $script:securityManifestPath = if ($script:selectedVersion.manifests.security) { Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.security }
+            $script:backupManifestPath = if ($script:selectedVersion.manifests.backup) { Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.backup }
+            $script:assessmentPath = if ($script:selectedVersion.manifests.assessment) { Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.assessment }
+
+            Write-Host ""
+            Write-Host "Configuracion cargada con exito para $($script:selectedProductName) $($script:selectedModelName) $($script:selectedVersionName)." -ForegroundColor Green
+        }
+        else {
+            Write-Host ""
+            Write-Host "Pasos no disponibles para $($script:selectedProduct.displayName) $($script:selectedModel.displayName) $($script:selectedVersion.displayName). Próximamente." -ForegroundColor Red
+        }
+    }
+}
+
 function Show-Menu {
     [CmdletBinding()]
     param()
+
+    Select-Installation
 
     do {
         Write-Host ""
@@ -727,22 +920,22 @@ function Show-Menu {
         switch ($option) {
             "1" {
                 Get-SystemInfo
-                Test-DFEHardware
+                Test-DFEHardware -Product $script:selectedProductName -Version $script:selectedVersionName -ManifestPath $script:hardwareManifestPath
             }
             "2" {
-                Test-DFENetwork
+                Test-DFENetwork -ManifestPath $script:networkManifestPath -AssessmentPath $script:assessmentPath
             }
             "3" {
-                Test-DFEOperatingSystem
+                Test-DFEOperatingSystem -Product $script:selectedProductName -Version $script:selectedVersionName -ManifestPath $script:hardwareManifestPath -AssessmentPath $script:assessmentPath
             }
             "4" {
-                Test-DFEStorage
+                Test-DFEStorage -Product $script:selectedProductName -Version $script:selectedVersionName -ManifestPath $script:storageManifestPath -AssessmentPath $script:assessmentPath -HardwareManifestPath $script:hardwareManifestPath
             }
             "5" {
-                Test-DFESecurity
+                Test-DFESecurity -Product $script:selectedProductName -Version $script:selectedVersionName -ManifestPath $script:securityManifestPath -AssessmentPath $script:assessmentPath -HardwareManifestPath $script:hardwareManifestPath
             }
             "6" {
-                Test-DFEBackup
+                Test-DFEBackup -Product $script:selectedProductName -Version $script:selectedVersionName -ManifestPath $script:backupManifestPath -HardwareManifestPath $script:hardwareManifestPath
             }
             "7" {
                 Write-Host "Saliendo de DFE Toolkit."

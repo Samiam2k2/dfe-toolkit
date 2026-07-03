@@ -26,9 +26,9 @@ else {
 
 $projectRoot = Split-Path -Parent $testsRoot
 $validatorPath = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Storage.ps1"
-$manifestPath = Join-Path -Path $projectRoot -ChildPath "manifests\storage-requirements.json"
-$assessmentPath = Join-Path -Path $projectRoot -ChildPath "manifests\assessment-checks.json"
-$hardwareManifestPath = Join-Path -Path $projectRoot -ChildPath "manifests\hardware-requirements.json"
+$manifestPath = Join-Path -Path $projectRoot -ChildPath "manifests\production-pro\8.3\storage.json"
+$assessmentPath = Join-Path -Path $projectRoot -ChildPath "manifests\production-pro\8.3\assessment-checks.json"
+$hardwareManifestPath = Join-Path -Path $projectRoot -ChildPath "manifests\production-pro\8.3\hardware.json"
 $fixturesRoot = Join-Path -Path $testsRoot -ChildPath "fixtures\storage"
 
 if (-not (Test-Path -Path $validatorPath -PathType Leaf)) {

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "1.0",
+  "id": "test-dummy-download",
+  "name": "Test - Dummy Azure Blob Download",
+  "status": "approved",
+  "channel": "testing",
+  "product": "DFE Toolkit",
+  "version": "test",
+  "updatePack": "none",
+  "installType": "download-test",
+  "requiresSDrive": false,
+  "minimumFreeSpaceGB": 1,
+  "supportedOperatingSystems": [
+    "Microsoft Windows 10",
+    "Microsoft Windows 11",
+    "Microsoft Windows Server 2019",
+    "Microsoft Windows Server 2022"
+  ],
+  "steps": [
+    {
+      "order": 1,
+      "id": "download-dummy-package",
+      "name": "Download dummy package",
+      "type": "download",
+      "packageId": "dummy-package-test"
+    },
+    {
+      "order": 2,
+      "id": "validate-dummy-package-hash",
+      "name": "Validate dummy package SHA256",
+      "type": "hash-validation",
+      "packageId": "dummy-package-test"
+    }
+  ]
+}

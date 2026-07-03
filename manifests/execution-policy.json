@@ -1,0 +1,136 @@
+{
+  "schemaVersion": "1.1",
+  "description": "Global execution policy for DFE Toolkit. This file controls development-safe behavior versus field execution behavior without requiring per-step decisions inside the GUI.",
+  "defaultMode": "development",
+  "availableModes": [
+    "development",
+    "field"
+  ],
+  "modes": {
+    "development": {
+      "displayName": "Development mode",
+      "description": "Safe mode for local development and lab testing. No installers are executed and no machine configuration is modified.",
+      "allowDevelopmentMachine": true,
+      "allowBlocking": false,
+      "validations": {
+        "behavior": "readOnly",
+        "persistEvidence": true,
+        "treatWarningsAsBlocking": false,
+        "treatFailuresAsBlocking": false
+      },
+      "installers": {
+        "behavior": "simulate",
+        "persistEvidence": true,
+        "validatePackageMetadata": true,
+        "downloadPackages": false,
+        "executePackages": false
+      },
+      "manualSteps": {
+        "behavior": "enabled",
+        "requireReasonForSkip": true,
+        "requireReasonForNotApplicable": true
+      },
+      "reporting": {
+        "enabled": true,
+        "json": true,
+        "humanReadable": false
+      }
+    },
+    "field": {
+      "displayName": "Field mode",
+      "description": "Production field mode for execution on approved DFE servers or workstations. Installers may run, validations remain read-only unless a future policy explicitly allows remediation.",
+      "allowDevelopmentMachine": false,
+      "allowBlocking": true,
+      "validations": {
+        "behavior": "readOnly",
+        "persistEvidence": true,
+        "treatWarningsAsBlocking": false,
+        "treatFailuresAsBlocking": true
+      },
+      "installers": {
+        "behavior": "execute",
+        "persistEvidence": true,
+        "validatePackageMetadata": true,
+        "downloadPackages": true,
+        "executePackages": true
+      },
+      "manualSteps": {
+        "behavior": "enabled",
+        "requireReasonForSkip": true,
+        "requireReasonForNotApplicable": true
+      },
+      "reporting": {
+        "enabled": true,
+        "json": true,
+        "humanReadable": false
+      }
+    }
+  },
+  "stepDefaults": {
+    "validation": {
+      "category": "validation",
+      "developmentBehavior": "readOnly",
+      "fieldBehavior": "readOnly"
+    },
+    "script": {
+      "category": "validation",
+      "developmentBehavior": "readOnly",
+      "fieldBehavior": "readOnly"
+    },
+    "installer": {
+      "category": "installer",
+      "developmentBehavior": "simulate",
+      "fieldBehavior": "execute"
+    },
+    "manual-confirmation": {
+      "category": "manual",
+      "developmentBehavior": "enabled",
+      "fieldBehavior": "enabled"
+    }
+  },
+  "stepOverrides": [
+    {
+      "stepId": "validate-hardware",
+      "category": "validation",
+      "scriptPath": "scripts/validation/Validate-Hardware.ps1",
+      "developmentBehavior": "readOnlyWithDevelopmentOverride",
+      "fieldBehavior": "readOnlyStrict",
+      "blocking": true,
+      "notes": "Hardware validation is read-only. Development mode allows unsupported hardware to continue for testing while preserving passed=false evidence. Field mode does not allow development override."
+    },
+    {
+      "stepId": "bios-network-hosts",
+      "category": "validation",
+      "scriptPath": "scripts/validation/Validate-NetworkAndHosts.ps1",
+      "developmentBehavior": "readOnly",
+      "fieldBehavior": "readOnly",
+      "blocking": false,
+      "notes": "Network and hosts validation is read-only. It reports warnings and requires engineer review for site-specific settings."
+    },
+    {
+      "stepId": "validation-checkpoint-after-licenses",
+      "category": "validation",
+      "scriptPath": null,
+      "developmentBehavior": "simulate",
+      "fieldBehavior": "readOnlyWhenScriptAvailable",
+      "blocking": false,
+      "notes": "Placeholder until the approved validation script is provided."
+    },
+    {
+      "stepId": "validation-checkpoint-after-updates",
+      "category": "validation",
+      "scriptPath": null,
+      "developmentBehavior": "simulate",
+      "fieldBehavior": "readOnlyWhenScriptAvailable",
+      "blocking": false,
+      "notes": "Placeholder until the approved validation script is provided."
+    }
+  ],
+  "safetyRules": {
+    "neverModifyNetworkConfigurationFromValidationScripts": true,
+    "neverEditHostsFromValidationScripts": true,
+    "neverRunInstallersInDevelopmentMode": true,
+    "requireExplicitFieldModeForInstallerExecution": true,
+    "requireAdminForFieldMode": true
+  }
+}

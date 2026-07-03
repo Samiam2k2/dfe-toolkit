@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "id": "test-script-failure",
+  "name": "Test - Controlled Script Failure",
+  "status": "approved",
+  "channel": "testing",
+  "product": "DFE Toolkit",
+  "version": "test",
+  "updatePack": "none",
+  "installType": "script-failure-test",
+  "requiresSDrive": false,
+  "minimumFreeSpaceGB": 1,
+  "supportedOperatingSystems": [
+    "Microsoft Windows 10",
+    "Microsoft Windows 11",
+    "Microsoft Windows Server 2019",
+    "Microsoft Windows Server 2022"
+  ],
+  "steps": [
+    {
+      "order": 1,
+      "id": "execute-safe-exit-1-script",
+      "name": "Execute safe exit-1 failure test script",
+      "type": "script",
+      "packageId": "safe-exit-1-script"
+    }
+  ]
+}

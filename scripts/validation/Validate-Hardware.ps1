@@ -137,13 +137,13 @@ function Get-HardwareRequirementsManifest {
     }
 
     if ($projectRoot) {
-        $localPath = Join-Path -Path $projectRoot -ChildPath "manifests\hardware-requirements.json"
+        $localPath = Join-Path -Path $projectRoot -ChildPath "manifests\production-pro\8.3\hardware.json"
         if (Test-Path -Path $localPath -PathType Leaf) {
             return Get-Content -Path $localPath -Raw | ConvertFrom-Json
         }
     }
 
-    $requirementsUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/manifests/hardware-requirements.json?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $requirementsUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/manifests/production-pro/8.3/hardware.json?cacheBust=$([DateTime]::UtcNow.Ticks)"
     return Invoke-RestMethod -Uri $requirementsUrl -Headers @{
         "Cache-Control" = "no-cache"
         "Pragma" = "no-cache"

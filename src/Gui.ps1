@@ -72,16 +72,25 @@ if (Test-Path -Path $sessionPath -PathType Leaf) {
     }
 }
 
-$installOptions = @{
-    "Production Pro" = @{
-        Models = @("Commercial", "Labels & Packaging")
-        Versions = @("8.3")
+function Get-CatalogManifest {
+    [CmdletBinding()]
+    param()
+
+    if ($projectRoot) {
+        $localPath = Join-Path -Path $projectRoot -ChildPath "manifests\catalog.json"
+        if (Test-Path -Path $localPath -PathType Leaf) {
+            return Get-Content -Path $localPath -Raw | ConvertFrom-Json
+        }
     }
-    "Composer" = @{
-        Models = @("Composer Server")
-        Versions = @("10.1")
-    }
+
+    $catalogUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/manifests/catalog.json?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    return Invoke-RestMethod -Uri $catalogUrl -Headers @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    } -ErrorAction Stop
 }
+
+$script:catalog = Get-CatalogManifest
 
 function Get-StatusText {
     param([string]$Status)
@@ -124,6 +133,7 @@ function Invoke-HardwareRequirementsValidation {
     param(
         [string]$Product,
         [string]$Version,
+        [string]$ManifestPath,
         [switch]$TestMode
     )
 
@@ -137,6 +147,9 @@ function Invoke-HardwareRequirementsValidation {
     $arguments = @{
         Product = $Product
         Version = $Version
+    }
+    if ($ManifestPath) {
+        $arguments["ManifestPath"] = $ManifestPath
     }
     if ($TestMode) {
         $arguments["TestMode"] = $true
@@ -224,6 +237,8 @@ function Get-ValidateNetworkScriptBlock {
 function Invoke-NetworkRequirementsValidation {
     [CmdletBinding()]
     param(
+        [string]$ManifestPath,
+        [string]$AssessmentPath,
         [switch]$TestMode
     )
 
@@ -235,6 +250,12 @@ function Invoke-NetworkRequirementsValidation {
     $validator = Get-ValidateNetworkScriptBlock
 
     $arguments = @{}
+    if ($ManifestPath) {
+        $arguments["ManifestPath"] = $ManifestPath
+    }
+    if ($AssessmentPath) {
+        $arguments["AssessmentPath"] = $AssessmentPath
+    }
     if ($TestMode) {
         $arguments["TestMode"] = $true
     }
@@ -326,6 +347,8 @@ function Invoke-OSRequirementsValidation {
     param(
         [string]$Product,
         [string]$Version,
+        [string]$ManifestPath,
+        [string]$AssessmentPath,
         [switch]$TestMode
     )
 
@@ -339,6 +362,12 @@ function Invoke-OSRequirementsValidation {
     $arguments = @{
         Product = $Product
         Version = $Version
+    }
+    if ($ManifestPath) {
+        $arguments["ManifestPath"] = $ManifestPath
+    }
+    if ($AssessmentPath) {
+        $arguments["AssessmentPath"] = $AssessmentPath
     }
     if ($TestMode) {
         $arguments["TestMode"] = $true
@@ -428,6 +457,9 @@ function Invoke-StorageRequirementsValidation {
         [string]$Product,
         [string]$Version,
         [string]$Profile = "SystemManager",
+        [string]$ManifestPath,
+        [string]$AssessmentPath,
+        [string]$HardwareManifestPath,
         [switch]$TestMode
     )
 
@@ -442,6 +474,15 @@ function Invoke-StorageRequirementsValidation {
         Product = $Product
         Version = $Version
         Profile = $Profile
+    }
+    if ($ManifestPath) {
+        $arguments["ManifestPath"] = $ManifestPath
+    }
+    if ($AssessmentPath) {
+        $arguments["AssessmentPath"] = $AssessmentPath
+    }
+    if ($HardwareManifestPath) {
+        $arguments["HardwareManifestPath"] = $HardwareManifestPath
     }
     if ($TestMode) {
         $arguments["TestMode"] = $true
@@ -540,6 +581,9 @@ function Invoke-SecurityRequirementsValidation {
     param(
         [string]$Product,
         [string]$Version,
+        [string]$ManifestPath,
+        [string]$AssessmentPath,
+        [string]$HardwareManifestPath,
         [switch]$TestMode
     )
 
@@ -553,6 +597,15 @@ function Invoke-SecurityRequirementsValidation {
     $arguments = @{
         Product = $Product
         Version = $Version
+    }
+    if ($ManifestPath) {
+        $arguments["ManifestPath"] = $ManifestPath
+    }
+    if ($AssessmentPath) {
+        $arguments["AssessmentPath"] = $AssessmentPath
+    }
+    if ($HardwareManifestPath) {
+        $arguments["HardwareManifestPath"] = $HardwareManifestPath
     }
     if ($TestMode) {
         $arguments["TestMode"] = $true
@@ -657,6 +710,8 @@ function Invoke-PreflightBackupValidation {
         [string]$Product,
         [string]$Version,
         [string]$Profile,
+        [string]$ManifestPath,
+        [string]$HardwareManifestPath,
         [switch]$TestMode
     )
 
@@ -671,6 +726,12 @@ function Invoke-PreflightBackupValidation {
         Product = $Product
         Version = $Version
         Profile = $Profile
+    }
+    if ($ManifestPath) {
+        $arguments["ManifestPath"] = $ManifestPath
+    }
+    if ($HardwareManifestPath) {
+        $arguments["HardwareManifestPath"] = $HardwareManifestPath
     }
     if ($TestMode) {
         $arguments["TestMode"] = $true
@@ -827,39 +888,43 @@ $xaml = @"
                 <TextBlock x:Name="VersionLabel" Text="Version" Foreground="#DADADA" FontWeight="SemiBold" />
                 <ComboBox x:Name="VersionCombo" />
 
-                <Button x:Name="LoadStepsButton"
-                        Content="Cargar pasos"
-                        Margin="0,10,0,0"
-                        Background="#0078D4" />
-
-                <TextBlock Text="DFE-Toolkit"
-                           Foreground="#9E9E9E"
-                           FontSize="12"
-                           Margin="0,42,0,0" />
-                <TextBlock x:Name="FooterModeText"
-                           Text="Validacion real de hardware"
-                           Foreground="#9E9E9E"
-                           FontSize="12" />
-            </StackPanel>
-        </Border>
-
-        <Grid Grid.Column="1" Background="White">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-
-            <Border Grid.Row="0" Background="White" Padding="30,24,30,16" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1">
-                <StackPanel>
-                    <TextBlock x:Name="HeaderTitle" Text="Pasos de instalacion" FontSize="26" FontWeight="SemiBold" Foreground="#1F2937" />
-                    <TextBlock x:Name="PlanSubtitle" Text="Seleccione una instalacion y cargue los pasos" Foreground="#6B7280" Margin="0,4,0,0" />
-                </StackPanel>
-            </Border>
-
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="#F8FAFC">
-                <StackPanel Margin="24">
-                    <Border x:Name="HardwareStepCard"
+                 <TextBlock Text="DFE-Toolkit"
+                            Foreground="#9E9E9E"
+                            FontSize="12"
+                            Margin="0,42,0,0" />
+                 <TextBlock x:Name="FooterModeText"
+                            Text="Validacion real de hardware"
+                            Foreground="#9E9E9E"
+                            FontSize="12" />
+             </StackPanel>
+         </Border>
+ 
+         <Grid Grid.Column="1" Background="White">
+             <Grid.RowDefinitions>
+                 <RowDefinition Height="Auto" />
+                 <RowDefinition Height="*" />
+                 <RowDefinition Height="Auto" />
+             </Grid.RowDefinitions>
+ 
+             <Border Grid.Row="0" Background="White" Padding="30,24,30,16" BorderBrush="#E5E7EB" BorderThickness="0,0,0,1">
+                 <StackPanel>
+                     <TextBlock x:Name="HeaderTitle" Text="Pasos de instalacion" FontSize="26" FontWeight="SemiBold" Foreground="#1F2937" />
+                     <TextBlock x:Name="PlanSubtitle" Text="Seleccione una instalacion y cargue los pasos" Foreground="#6B7280" Margin="0,4,0,0" />
+                 </StackPanel>
+             </Border>
+ 
+             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Background="#F8FAFC">
+                 <StackPanel Margin="24">
+                     <TextBlock x:Name="StepsNotAvailableText"
+                                Text=""
+                                Foreground="#E11D48"
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                TextAlignment="Center"
+                                TextWrapping="Wrap"
+                                Margin="0,40,0,40"
+                                Visibility="Collapsed" />
+                     <Border x:Name="HardwareStepCard"
                             Background="#FFFFFF"
                             BorderBrush="#E5E7EB"
                             BorderThickness="1"
@@ -990,7 +1055,7 @@ $xaml = @"
                         </Grid>
                     </Border>
 
-                    <TextBlock Text="Resultado" FontSize="14" FontWeight="SemiBold" Foreground="#374151" Margin="0,6,0,8" />
+                    <TextBlock x:Name="ResultLabel" Text="Resultado" FontSize="14" FontWeight="SemiBold" Foreground="#374151" Margin="0,6,0,8" />
                     <TextBox x:Name="ResultTextBox"
                              MinHeight="320"
                              FontFamily="Consolas"
@@ -1031,7 +1096,8 @@ $window = [Windows.Markup.XamlReader]::Load($reader)
 $productCombo = $window.FindName("ProductCombo")
 $modelCombo = $window.FindName("ModelCombo")
 $versionCombo = $window.FindName("VersionCombo")
-$loadStepsButton = $window.FindName("LoadStepsButton")
+$stepsNotAvailableText = $window.FindName("StepsNotAvailableText")
+$resultLabel = $window.FindName("ResultLabel")
 $hardwareStepCard = $window.FindName("HardwareStepCard")
 $networkStepCard = $window.FindName("NetworkStepCard")
 $operatingSystemStepCard = $window.FindName("OperatingSystemStepCard")
@@ -1221,34 +1287,89 @@ function Update-StepState {
     Update-Progress
 }
 
-function Load-Steps {
-    $script:stepStatuses.Hardware = "Pending"
-    $script:stepStatuses.Network = "Pending"
-    $script:stepStatuses.OperatingSystem = "Pending"
-    $script:stepStatuses.Storage = "Pending"
-    $script:stepStatuses.Security = "Pending"
-    $script:stepStatuses.Backup = "Pending"
-    $resultTextBox.Text = ""
-    $planSubtitle.Text = "$($productCombo.SelectedItem) - $($modelCombo.SelectedItem) - Version $($versionCombo.SelectedItem)"
-    Update-StepState -Step "Hardware" -Status "Pending"
-    Update-StepState -Step "Network" -Status "Pending"
-    Update-StepState -Step "OperatingSystem" -Status "Pending"
-    Update-StepState -Step "Storage" -Status "Pending"
-    Update-StepState -Step "Security" -Status "Pending"
-    Update-StepState -Step "Backup" -Status "Pending"
-    Save-Session
+function Update-VersionSteps {
+    $selectedVersionName = [string]$versionCombo.SelectedItem
+    $script:selectedVersion = $null
+    if ($null -ne $script:selectedModel) {
+        $script:selectedVersion = $script:selectedModel.versions | Where-Object { $_.displayName -eq $selectedVersionName }
+    }
+
+    if ($null -ne $script:selectedVersion) {
+        $prodName = $script:selectedProduct.displayName
+        $modelName = $script:selectedModel.displayName
+        $verName = $script:selectedVersion.displayName
+
+        if ($script:selectedVersion.stepsAvailable) {
+            $stepsNotAvailableText.Visibility = "Collapsed"
+
+            $hardwareStepCard.Visibility = "Visible"
+            $networkStepCard.Visibility = "Visible"
+            $operatingSystemStepCard.Visibility = "Visible"
+            $storageStepCard.Visibility = "Visible"
+            $securityStepCard.Visibility = "Visible"
+            $backupStepCard.Visibility = "Visible"
+            $resultLabel.Visibility = "Visible"
+            $resultTextBox.Visibility = "Visible"
+
+            $planSubtitle.Text = "$prodName - $modelName - Version $verName"
+
+            if (-not $script:loadingSession) {
+                $script:stepStatuses.Hardware = "Pending"
+                $script:stepStatuses.Network = "Pending"
+                $script:stepStatuses.OperatingSystem = "Pending"
+                $script:stepStatuses.Storage = "Pending"
+                $script:stepStatuses.Security = "Pending"
+                $script:stepStatuses.Backup = "Pending"
+                $resultTextBox.Text = ""
+            }
+
+            Update-StepState -Step "Hardware" -Status $script:stepStatuses.Hardware
+            Update-StepState -Step "Network" -Status $script:stepStatuses.Network
+            Update-StepState -Step "OperatingSystem" -Status $script:stepStatuses.OperatingSystem
+            Update-StepState -Step "Storage" -Status $script:stepStatuses.Storage
+            Update-StepState -Step "Security" -Status $script:stepStatuses.Security
+            Update-StepState -Step "Backup" -Status $script:stepStatuses.Backup
+        }
+        else {
+            $stepsNotAvailableText.Text = "Pasos no disponibles para $prodName $modelName $verName. Próximamente."
+            $stepsNotAvailableText.Visibility = "Visible"
+
+            $hardwareStepCard.Visibility = "Collapsed"
+            $networkStepCard.Visibility = "Collapsed"
+            $operatingSystemStepCard.Visibility = "Collapsed"
+            $storageStepCard.Visibility = "Collapsed"
+            $securityStepCard.Visibility = "Collapsed"
+            $backupStepCard.Visibility = "Collapsed"
+            $resultLabel.Visibility = "Collapsed"
+            $resultTextBox.Visibility = "Collapsed"
+
+            $planSubtitle.Text = "$prodName - $modelName - Version $verName"
+            $progressBar.Value = 0
+            $progressLabel.Text = "Progreso general: 0%"
+        }
+        Save-Session
+    }
 }
 
 function Update-ModelCombo {
     $modelCombo.Items.Clear()
     $versionCombo.Items.Clear()
 
-    $product = [string]$productCombo.SelectedItem
-    foreach ($model in $installOptions[$product].Models) {
-        $modelCombo.Items.Add($model) | Out-Null
+    $selectedProductName = [string]$productCombo.SelectedItem
+    $script:selectedProduct = $script:catalog.products | Where-Object { $_.displayName -eq $selectedProductName }
+
+    if ($null -ne $script:selectedProduct) {
+        foreach ($model in $script:selectedProduct.models) {
+            $modelCombo.Items.Add($model.displayName) | Out-Null
+        }
     }
 
-    if ($installOptions[$product].Models -contains $session.Model) {
+    $hasModel = $false
+    if ($null -ne $script:selectedProduct) {
+        $hasModel = ($script:selectedProduct.models | Where-Object { $_.displayName -eq $session.Model }) -ne $null
+    }
+
+    if ($hasModel) {
         $modelCombo.SelectedItem = $session.Model
     }
     elseif ($modelCombo.Items.Count -gt 0) {
@@ -1261,12 +1382,24 @@ function Update-ModelCombo {
 function Update-VersionCombo {
     $versionCombo.Items.Clear()
 
-    $product = [string]$productCombo.SelectedItem
-    foreach ($version in $installOptions[$product].Versions) {
-        $versionCombo.Items.Add($version) | Out-Null
+    $selectedModelName = [string]$modelCombo.SelectedItem
+    $script:selectedModel = $null
+    if ($null -ne $script:selectedProduct) {
+        $script:selectedModel = $script:selectedProduct.models | Where-Object { $_.displayName -eq $selectedModelName }
     }
 
-    if ($installOptions[$product].Versions -contains $session.Version) {
+    if ($null -ne $script:selectedModel) {
+        foreach ($version in $script:selectedModel.versions) {
+            $versionCombo.Items.Add($version.displayName) | Out-Null
+        }
+    }
+
+    $hasVersion = $false
+    if ($null -ne $script:selectedModel) {
+        $hasVersion = ($script:selectedModel.versions | Where-Object { $_.displayName -eq $session.Version }) -ne $null
+    }
+
+    if ($hasVersion) {
         $versionCombo.SelectedItem = $session.Version
     }
     elseif ($versionCombo.Items.Count -gt 0) {
@@ -1280,6 +1413,10 @@ function Invoke-HardwareValidation {
 
     $script:hardwareProduct = [string]$productCombo.SelectedItem
     $script:hardwareVersion = [string]$versionCombo.SelectedItem
+    $script:hardwareManifestPath = $null
+    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.hardware) {
+        $script:hardwareManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.hardware
+    }
 
     $timer = New-Object Windows.Threading.DispatcherTimer
     $timer.Interval = [TimeSpan]::FromMilliseconds(120)
@@ -1289,9 +1426,7 @@ function Invoke-HardwareValidation {
         $timerSender.Stop()
 
         try {
-            # El comportamiento por defecto ya no es modo pruebas: se refleja el
-            # estado real. Para forzar Pass, agregar -TestMode a esta llamada.
-            $validation = Invoke-HardwareRequirementsValidation -Product $script:hardwareProduct -Version $script:hardwareVersion
+            $validation = Invoke-HardwareRequirementsValidation -Product $script:hardwareProduct -Version $script:hardwareVersion -ManifestPath $script:hardwareManifestPath
             $resultTextBox.Text = $validation.Text
 
             switch ($validation.Result.Status) {
@@ -1314,6 +1449,15 @@ function Invoke-NetworkValidation {
     Update-StepState -Step "Network" -Status "Running"
     $resultTextBox.Text = "Ejecutando validacion de red..."
 
+    $script:networkManifestPath = $null
+    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.network) {
+        $script:networkManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.network
+    }
+    $script:networkAssessmentPath = $null
+    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.assessment) {
+        $script:networkAssessmentPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.assessment
+    }
+
     $timer = New-Object Windows.Threading.DispatcherTimer
     $timer.Interval = [TimeSpan]::FromMilliseconds(120)
     $timer.Add_Tick({
@@ -1322,9 +1466,7 @@ function Invoke-NetworkValidation {
         $timerSender.Stop()
 
         try {
-            # El comportamiento por defecto ya no es modo pruebas: se refleja el
-            # estado real. Para forzar Pass, agregar -TestMode a esta llamada.
-            $validation = Invoke-NetworkRequirementsValidation
+            $validation = Invoke-NetworkRequirementsValidation -ManifestPath $script:networkManifestPath -AssessmentPath $script:networkAssessmentPath
             $resultTextBox.Text = $validation.Text
 
             switch ($validation.Result.Status) {
@@ -1349,6 +1491,14 @@ function Invoke-OSValidation {
 
     $script:osProduct = [string]$productCombo.SelectedItem
     $script:osVersion = [string]$versionCombo.SelectedItem
+    $script:osHardwareManifestPath = $null
+    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.hardware) {
+        $script:osHardwareManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.hardware
+    }
+    $script:osAssessmentPath = $null
+    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.assessment) {
+        $script:osAssessmentPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.assessment
+    }
 
     $timer = New-Object Windows.Threading.DispatcherTimer
     $timer.Interval = [TimeSpan]::FromMilliseconds(120)
@@ -1358,9 +1508,7 @@ function Invoke-OSValidation {
         $timerSender.Stop()
 
         try {
-            # El comportamiento por defecto ya no es modo pruebas: se refleja el
-            # estado real. Para forzar Pass, agregar -TestMode a esta llamada.
-            $validation = Invoke-OSRequirementsValidation -Product $script:osProduct -Version $script:osVersion
+            $validation = Invoke-OSRequirementsValidation -Product $script:osProduct -Version $script:osVersion -ManifestPath $script:osHardwareManifestPath -AssessmentPath $script:osAssessmentPath
             $resultTextBox.Text = $validation.Text
 
             switch ($validation.Result.Status) {
@@ -1385,6 +1533,18 @@ function Invoke-StorageValidation {
 
     $script:storageProduct = [string]$productCombo.SelectedItem
     $script:storageVersion = [string]$versionCombo.SelectedItem
+    $script:storageManifestPath = $null
+    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.storage) {
+        $script:storageManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.storage
+    }
+    $script:storageAssessmentPath = $null
+    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.assessment) {
+        $script:storageAssessmentPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.assessment
+    }
+    $script:storageHardwareManifestPath = $null
+    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.hardware) {
+        $script:storageHardwareManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.hardware
+    }
 
     $timer = New-Object Windows.Threading.DispatcherTimer
     $timer.Interval = [TimeSpan]::FromMilliseconds(120)
@@ -1394,7 +1554,7 @@ function Invoke-StorageValidation {
         $timerSender.Stop()
 
         try {
-            $validation = Invoke-StorageRequirementsValidation -Product $script:storageProduct -Version $script:storageVersion -Profile "SystemManager"
+            $validation = Invoke-StorageRequirementsValidation -Product $script:storageProduct -Version $script:storageVersion -Profile "SystemManager" -ManifestPath $script:storageManifestPath -AssessmentPath $script:storageAssessmentPath -HardwareManifestPath $script:storageHardwareManifestPath
             $resultTextBox.Text = $validation.Text
 
             switch ($validation.Result.Status) {
@@ -1419,6 +1579,18 @@ function Invoke-SecurityValidation {
 
     $script:securityProduct = [string]$productCombo.SelectedItem
     $script:securityVersion = [string]$versionCombo.SelectedItem
+    $script:securityManifestPath = $null
+    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.security) {
+        $script:securityManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.security
+    }
+    $script:securityAssessmentPath = $null
+    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.assessment) {
+        $script:securityAssessmentPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.assessment
+    }
+    $script:securityHardwareManifestPath = $null
+    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.hardware) {
+        $script:securityHardwareManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.hardware
+    }
 
     $timer = New-Object Windows.Threading.DispatcherTimer
     $timer.Interval = [TimeSpan]::FromMilliseconds(120)
@@ -1428,7 +1600,7 @@ function Invoke-SecurityValidation {
         $timerSender.Stop()
 
         try {
-            $validation = Invoke-SecurityRequirementsValidation -Product $script:securityProduct -Version $script:securityVersion
+            $validation = Invoke-SecurityRequirementsValidation -Product $script:securityProduct -Version $script:securityVersion -ManifestPath $script:securityManifestPath -AssessmentPath $script:securityAssessmentPath -HardwareManifestPath $script:securityHardwareManifestPath
             $resultTextBox.Text = $validation.Text
 
             switch ($validation.Result.Status) {
@@ -1453,11 +1625,18 @@ function Invoke-BackupValidation {
 
     $script:backupProduct = [string]$productCombo.SelectedItem
     $script:backupVersion = [string]$versionCombo.SelectedItem
-    
     $selectedItem = $backupProfileCombo.SelectedItem
     $script:backupProfile = "SystemManager"
     if ($null -ne $selectedItem) {
         $script:backupProfile = [string]$selectedItem.Content
+    }
+    $script:backupManifestPath = $null
+    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.backup) {
+        $script:backupManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.backup
+    }
+    $script:backupHardwareManifestPath = $null
+    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.hardware) {
+        $script:backupHardwareManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.hardware
     }
 
     $timer = New-Object Windows.Threading.DispatcherTimer
@@ -1468,7 +1647,7 @@ function Invoke-BackupValidation {
         $timerSender.Stop()
 
         try {
-            $validation = Invoke-PreflightBackupValidation -Product $script:backupProduct -Version $script:backupVersion -Profile $script:backupProfile
+            $validation = Invoke-PreflightBackupValidation -Product $script:backupProduct -Version $script:backupVersion -Profile $script:backupProfile -ManifestPath $script:backupManifestPath -HardwareManifestPath $script:backupHardwareManifestPath
             $resultTextBox.Text = $validation.Text
 
             switch ($validation.Result.Status) {
@@ -1493,15 +1672,22 @@ function Show-Report {
     [Windows.MessageBox]::Show($message, "Reporte DFE-Toolkit", "OK", "Information") | Out-Null
 }
 
-foreach ($product in $installOptions.Keys) {
-    $productCombo.Items.Add($product) | Out-Null
+foreach ($product in $script:catalog.products) {
+    $productCombo.Items.Add($product.displayName) | Out-Null
 }
 
-if ($installOptions.ContainsKey($session.Product)) {
+$hasProduct = $false
+if ($null -ne $script:catalog) {
+    $hasProduct = ($script:catalog.products | Where-Object { $_.displayName -eq $session.Product }) -ne $null
+}
+
+if ($hasProduct) {
     $productCombo.SelectedItem = $session.Product
 }
 else {
-    $productCombo.SelectedIndex = 0
+    if ($productCombo.Items.Count -gt 0) {
+        $productCombo.SelectedIndex = 0
+    }
 }
 
 $productCombo.Add_SelectionChanged({
@@ -1512,8 +1698,8 @@ $modelCombo.Add_SelectionChanged({
     Update-VersionCombo
 })
 
-$loadStepsButton.Add_Click({
-    Load-Steps
+$versionCombo.Add_SelectionChanged({
+    Update-VersionSteps
 })
 
 $executeHardwareButton.Add_Click({
@@ -1548,13 +1734,8 @@ $window.Add_Closing({
     Save-Session
 })
 
+$script:loadingSession = $true
 Update-ModelCombo
-Update-StepState -Step "Hardware" -Status $script:stepStatuses.Hardware
-Update-StepState -Step "Network" -Status $script:stepStatuses.Network
-Update-StepState -Step "OperatingSystem" -Status $script:stepStatuses.OperatingSystem
-Update-StepState -Step "Storage" -Status $script:stepStatuses.Storage
-Update-StepState -Step "Security" -Status $script:stepStatuses.Security
-Update-StepState -Step "Backup" -Status $script:stepStatuses.Backup
-$planSubtitle.Text = "$($productCombo.SelectedItem) - $($modelCombo.SelectedItem) - Version $($versionCombo.SelectedItem)"
+$script:loadingSession = $false
 
 $window.ShowDialog() | Out-Null

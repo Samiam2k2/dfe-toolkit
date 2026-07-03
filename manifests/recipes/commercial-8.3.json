@@ -1,0 +1,274 @@
+{
+  "schemaVersion": "1.1",
+  "id": "commercial-8.3",
+  "name": "Production Pro Commercial 8.3",
+  "product": "Production Pro Commercial",
+  "version": "8.3",
+  "installType": "standard",
+  "status": "testing",
+  "channel": "testing",
+  "estimatedTimeMinutes": 120,
+  "requiresAdmin": true,
+  "requiresInteractiveSession": true,
+  "stateful": true,
+  "resumeAfterReboot": true,
+  "workingDirectory": "C:\\ProgramData\\DFE-Toolkit",
+  "cacheDirectory": "C:\\ProgramData\\DFE-Toolkit\\cache",
+  "logDirectory": "C:\\ProgramData\\DFE-Toolkit\\logs",
+  "stateDirectory": "C:\\ProgramData\\DFE-Toolkit\\state",
+  "reportDirectory": "C:\\ProgramData\\DFE-Toolkit\\reports",
+  "description": "Standard HP PrintOS Production Pro Commercial 8.3 installation or upgrade flow. The Production Pro installers are responsible for detecting whether the server is a clean installation or an upgrade scenario.",
+  "preflight": {
+    "requireAdmin": true,
+    "requireInternet": true,
+    "requireSDrive": true,
+    "minimumFreeSpaceGB": 25,
+    "supportedOperatingSystems": [
+      "Windows Server 2019",
+      "Windows 10"
+    ],
+    "unsupportedConditions": [
+      {
+        "id": "series-2-press",
+        "severity": "blocked",
+        "message": "Production Pro 8.x is not supported to drive Series 2 presses. Stop the installation and contact the appropriate HP support resources."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "order": 0,
+      "id": "validate-hardware",
+      "name": "Validate hardware",
+      "type": "validation",
+      "action": "validate-hardware",
+      "requirementProfile": "production-pro-8.3-commercial",
+      "validationMode": "newInstallation",
+      "requiresReboot": false,
+      "resumeAfterReboot": false,
+      "required": true,
+      "enabledByDefault": true,
+      "allowSkip": false,
+      "onFailure": "stop",
+      "blocking": true,
+      "notes": "Validate supported DFE hardware before starting the Production Pro 8.3 procedure. This read-only validation uses the approved hardware requirements manifest."
+    },
+    {
+      "order": 1,
+      "id": "bios-network-hosts",
+      "name": "BIOS, network and hosts configuration",
+      "type": "validation",
+      "action": "validate-network-and-hosts",
+      "requiresReboot": false,
+      "resumeAfterReboot": false,
+      "required": true,
+      "enabledByDefault": true,
+      "allowSkip": false,
+      "onFailure": "warn",
+      "blocking": false,
+      "notes": "Validate BIOS-related assumptions, network adapter inventory and hosts file requirements in read-only mode. No network settings or hosts file entries are modified."
+    },
+    {
+      "order": 2,
+      "id": "wsus",
+      "name": "WSUS",
+      "type": "manual-confirmation",
+      "action": "confirm-wsus",
+      "requiresReboot": false,
+      "resumeAfterReboot": false,
+      "required": true,
+      "enabledByDefault": true,
+      "allowSkip": true,
+      "onFailure": "stop",
+      "blocking": true,
+      "notes": "Manually complete or confirm the WSUS-related step required by the Production Pro 8.3 procedure. This step is intentionally manual until an approved WSUS validation or action script is defined."
+    },
+    {
+      "order": 3,
+      "id": "win10opt",
+      "name": "Win10Opt",
+      "type": "manual-confirmation",
+      "action": "confirm-win10opt",
+      "requiresReboot": false,
+      "resumeAfterReboot": false,
+      "required": true,
+      "enabledByDefault": true,
+      "allowSkip": true,
+      "onFailure": "stop",
+      "blocking": true,
+      "notes": "Manually complete or confirm the Windows optimization step before prerequisites. This step is intentionally manual until an approved Win10Opt validation or action script is defined."
+    },
+    {
+      "order": 4,
+      "id": "install-prerequisites",
+      "name": "Validate Production Pro 8.3 prerequisites package",
+      "type": "installer",
+      "action": "validate-package-cache",
+      "packageId": "commercial-8.3-prerequisites",
+      "requiresCache": true,
+      "requiresVerifiedSha256": true,
+      "allowDownloadInDevelopment": false,
+      "executeInDevelopment": false,
+      "requiresReboot": true,
+      "resumeAfterReboot": true,
+      "required": true,
+      "enabledByDefault": true,
+      "allowSkip": false,
+      "onFailure": "stop",
+      "blocking": true,
+      "notes": "Validate prerequisites package metadata, Azure access and existing local cache integrity. Development mode must not execute the installer and should not introduce a new automatic download decision during this conservative migration."
+    },
+    {
+      "order": 5,
+      "id": "install-production-pro-software",
+      "name": "Install Production Pro Commercial 8.3 software",
+      "type": "installer",
+      "packageId": "commercial-8.3-base",
+      "requiresReboot": true,
+      "resumeAfterReboot": true,
+      "onFailure": "stop",
+      "notes": "Run the Production Pro Commercial 8.3 software installer. The installer determines whether the environment is new or upgrade."
+    },
+    {
+      "order": 6,
+      "id": "licenses",
+      "name": "Licenses",
+      "type": "manual-confirmation",
+      "required": true,
+      "onFailure": "stop",
+      "notes": "Confirm required licenses are available and applied according to the installation guide."
+    },
+    {
+      "order": 7,
+      "id": "validation-checkpoint-after-licenses",
+      "name": "Validation checkpoint after licenses",
+      "type": "script",
+      "packageId": "validate-installation",
+      "requiresReboot": false,
+      "resumeAfterReboot": false,
+      "onFailure": "warn",
+      "notes": "Run or confirm validation checkpoint after licensing."
+    },
+    {
+      "order": 8,
+      "id": "clean-bk",
+      "name": "Clean BK",
+      "type": "manual-confirmation",
+      "required": true,
+      "onFailure": "stop",
+      "notes": "Clean BK remains pending confirmation of the exact approved script or procedure."
+    },
+    {
+      "order": 9,
+      "id": "map-press-with-ipc",
+      "name": "Map press with IPC",
+      "type": "manual-confirmation",
+      "required": true,
+      "onFailure": "stop",
+      "notes": "Map the press with IPC according to the installation guide."
+    },
+    {
+      "order": 10,
+      "id": "open-cep",
+      "name": "Open CEP",
+      "type": "manual-confirmation",
+      "required": true,
+      "onFailure": "stop",
+      "notes": "Complete or confirm the CEP step."
+    },
+    {
+      "order": 11,
+      "id": "dgc",
+      "name": "DGC",
+      "type": "manual-confirmation",
+      "required": true,
+      "onFailure": "stop",
+      "notes": "Complete or confirm DGC procedure."
+    },
+    {
+      "order": 12,
+      "id": "radar-update",
+      "name": "Radar Update",
+      "type": "manual-confirmation",
+      "required": true,
+      "onFailure": "stop",
+      "notes": "Complete or confirm Radar Update procedure."
+    },
+    {
+      "order": 13,
+      "id": "install-latest-approved-update",
+      "name": "Install latest approved Production Pro 8.3 update",
+      "type": "installer",
+      "packageId": "commercial-8.3-update-up3if",
+      "requiresReboot": false,
+      "resumeAfterReboot": false,
+      "onFailure": "stop",
+      "notes": "Install the latest approved update package for Commercial 8.3. For the current MVP this is UP3iF."
+    },
+    {
+      "order": 14,
+      "id": "install-approved-fixes",
+      "name": "Install approved fixes and optimizers",
+      "type": "manual-confirmation",
+      "required": true,
+      "onFailure": "stop",
+      "notes": "Install all approved non-cumulative fixes applicable to Commercial 8.3, in the approved order. This step will become package-driven after fix metadata is finalized."
+    },
+    {
+      "order": 15,
+      "id": "validation-checkpoint-after-updates",
+      "name": "Validation checkpoint after updates",
+      "type": "script",
+      "packageId": "validate-installation",
+      "requiresReboot": false,
+      "resumeAfterReboot": false,
+      "onFailure": "warn",
+      "notes": "Run validation after update packages and fixes."
+    },
+    {
+      "order": 16,
+      "id": "process-demo-job",
+      "name": "Process demo job",
+      "type": "manual-confirmation",
+      "required": true,
+      "onFailure": "warn",
+      "notes": "Process a demo job as functional validation."
+    },
+    {
+      "order": 17,
+      "id": "iserver-connection",
+      "name": "iServer connection",
+      "type": "manual-confirmation",
+      "required": true,
+      "onFailure": "warn",
+      "notes": "Confirm iServer connection."
+    },
+    {
+      "order": 18,
+      "id": "printos-connection",
+      "name": "PrintOS connection",
+      "type": "manual-confirmation",
+      "required": true,
+      "onFailure": "warn",
+      "notes": "Confirm PrintOS connection."
+    },
+    {
+      "order": 19,
+      "id": "spm-drivers-iprofile",
+      "name": "SPM Drivers / iProfiler",
+      "type": "manual-confirmation",
+      "required": true,
+      "onFailure": "warn",
+      "notes": "Complete or confirm SPM Drivers and iProfiler requirements."
+    },
+    {
+      "order": 20,
+      "id": "remote-support-assessment-rsc",
+      "name": "Remote support / Assessment / RSC",
+      "type": "manual-confirmation",
+      "required": true,
+      "onFailure": "warn",
+      "notes": "Complete remote support, assessment and RSC-related closure steps."
+    }
+  ]
+}

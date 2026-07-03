@@ -619,6 +619,49 @@ function Update-VersionCombo {
     }
 }
 
+function Get-ManifestPath {
+    param(
+        [string]$RelativePath
+    )
+
+    if ($projectRoot) {
+        $normalizedRelative = $RelativePath.Replace("/", "\")
+        $localPath = Join-Path -Path $projectRoot -ChildPath $normalizedRelative
+        if (Test-Path -Path $localPath -PathType Leaf) {
+            return $localPath
+        }
+    }
+
+    $tempDir = Join-Path -Path $env:TEMP -ChildPath "dfe-toolkit-manifests"
+    if (-not (Test-Path -Path $tempDir -PathType Container)) {
+        New-Item -Path $tempDir -ItemType Directory -Force | Out-Null
+    }
+
+    $flatFilename = $RelativePath.Replace("/", "-").Replace("\", "-")
+    $tempFile = Join-Path -Path $tempDir -ChildPath $flatFilename
+
+    $baseUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/"
+    $ticks = [DateTime]::UtcNow.Ticks
+    $url = $baseUrl + $RelativePath + "?cacheBust=" + $ticks
+
+    try {
+        $response = Invoke-RestMethod -Uri $url -Headers @{
+            "Cache-Control" = "no-cache"
+            "Pragma" = "no-cache"
+        } -ErrorAction Stop
+
+        $jsonStr = $response
+        if ($response -isnot [string]) {
+            $jsonStr = $response | ConvertTo-Json -Depth 10
+        }
+        Set-Content -Path $tempFile -Value $jsonStr -Encoding UTF8 -Force
+        return $tempFile
+    }
+    catch {
+        throw "No se pudo descargar el manifiesto remoto: " + $url + ". Detalle: " + $_.Exception.Message
+    }
+}
+
 function Get-ValidateSpecificationsScriptBlock {
     [CmdletBinding()]
     param()
@@ -656,7 +699,7 @@ function Invoke-SpecsValidation {
     if ($null -ne $manifestsObj) {
         foreach ($prop in $manifestsObj.PSObject.Properties) {
             if ($prop.Value) {
-                $script:specsManifestPaths[$prop.Name] = Join-Path -Path $projectRoot -ChildPath $prop.Value
+                $script:specsManifestPaths[$prop.Name] = Get-ManifestPath -RelativePath $prop.Value
             }
         }
     }

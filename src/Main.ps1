@@ -550,6 +550,135 @@ function Test-DFESecurity {
     }
 }
 
+function Get-ValidateBackupCommand {
+    [CmdletBinding()]
+    param()
+
+    $localScript = $null
+    if ($PSScriptRoot) {
+        $projectRoot = Split-Path -Parent $PSScriptRoot
+        $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Preflight-Backup.ps1"
+    }
+
+    if ($localScript -and (Test-Path -Path $localScript -PathType Leaf)) {
+        return @{
+            Command = $localScript
+            IsFile = $true
+        }
+    }
+
+    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Preflight-Backup.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    } -ErrorAction Stop
+
+    return @{
+        Command = [scriptblock]::Create($scriptContent)
+        IsFile = $false
+    }
+}
+
+function Test-DFEBackup {
+    [CmdletBinding()]
+    param(
+        [string]$Product = "Production Pro",
+        [string]$Version = "8.3"
+    )
+
+    $passIcon = [char]::ConvertFromUtf32(0x2705)
+    $failIcon = [char]::ConvertFromUtf32(0x274C)
+    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
+    $infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
+
+    Write-Host ""
+    Write-Host "Seleccione el perfil de backup a validar:"
+    Write-Host "1. SystemManager (Production Pro)"
+    Write-Host "2. IPC_RIP (nodo IPC o RIP)"
+    $profileChoice = Read-Host "Seleccione una opcion (1-2)"
+
+    $profile = "SystemManager"
+    if ($profileChoice -eq "2") {
+        $profile = "IPC_RIP"
+    }
+
+    Write-Host ""
+    Write-Host "Preflight de Backup" -ForegroundColor Cyan
+    Write-Host "-------------------" -ForegroundColor Gray
+    Write-Host "Evaluando origen, destino y herramientas para el perfil ${profile} en $Product $Version."
+    Write-Host ""
+
+    try {
+        $validator = Get-ValidateBackupCommand
+        $result = & $validator.Command -Product $Product -Version $Version -Profile $profile
+    }
+    catch {
+        Write-Host "No se pudo ejecutar el preflight de backup: $($_.Exception.Message)" -ForegroundColor Red
+        return
+    }
+
+    Write-Host "Resumen de Origen:"
+    Write-Host "   Fuentes totales: $($result.Sources.Total)"
+    Write-Host "   Encontradas: $($result.Sources.FoundCount)"
+    Write-Host "   Faltantes: $($result.Sources.MissingCount)"
+    Write-Host ""
+
+    Write-Host "Resumen de Destino:"
+    Write-Host "   Ruta: $($result.Destination.Path)"
+    $destExistsStr = if ($result.Destination.Exists) { "si" } else { "no" }
+    $destWritableStr = if ($result.Destination.Writable) { "si" } else { "no" }
+    Write-Host "   Existe: ${destExistsStr}"
+    Write-Host "   Escribible: ${destWritableStr}"
+    Write-Host ""
+
+    if ($result.Profile -eq "SystemManager") {
+        Write-Host "Resumen de Herramientas:"
+        $mobiusHomeStr = if ($result.Tools.MobiusHomeDefined) { "definida" } else { "no definida" }
+        Write-Host "   MOBIUS_HOME: ${mobiusHomeStr}"
+        Write-Host "   Encontradas: $($result.Tools.Found -join ', ')"
+        if ($result.Tools.Missing.Count -gt 0) {
+            Write-Host "   Faltantes: $($result.Tools.Missing -join ', ')"
+        }
+        Write-Host ""
+    }
+
+    foreach ($check in @($result.Checks)) {
+        switch ($check.Status) {
+            "Pass" {
+                Write-Host "$passIcon [$($check.Status)] $($check.Name)" -ForegroundColor Green
+            }
+            "Fail" {
+                Write-Host "$failIcon [$($check.Status)] $($check.Name)" -ForegroundColor Red
+            }
+            "Info" {
+                Write-Host "$infoIcon [$($check.Status)] $($check.Name)" -ForegroundColor Cyan
+            }
+            default {
+                Write-Host "$warningIcon [$($check.Status)] $($check.Name)" -ForegroundColor Yellow
+            }
+        }
+        Write-Host "      $($check.Detail)" -ForegroundColor Gray
+    }
+
+    Write-Host ""
+    switch ($result.Status) {
+        "Pass" {
+            Write-Host "Resultado: $passIcon preflight exitoso (Pass)." -ForegroundColor Green
+        }
+        "Warning" {
+            Write-Host "Resultado: $warningIcon preflight completado con advertencias (Warning)." -ForegroundColor Yellow
+        }
+        default {
+            Write-Host "Resultado: $failIcon preflight fallido (Fail)." -ForegroundColor Red
+        }
+    }
+
+    if ($result.DegradedByMode) {
+        Write-Host ""
+        Write-Host "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto de hardware para validar contra un servidor real." -ForegroundColor Yellow
+    }
+}
+
 function Show-DemoSummary {
     [CmdletBinding()]
     param()
@@ -568,6 +697,7 @@ function Show-DemoSummary {
     Write-Host "$checkIcon Verificaci$($oAcuteLower)n de red: COMPLETADA" -ForegroundColor Green
     Write-Host "$checkIcon Verificaci$($oAcuteLower)n de almacenamiento: COMPLETADA" -ForegroundColor Green
     Write-Host "$checkIcon Verificaci$($oAcuteLower)n de seguridad: COMPLETADA" -ForegroundColor Green
+    Write-Host "$checkIcon Preflight de backup: COMPLETADO" -ForegroundColor Green
     Write-Host "$pendingIcon Instalaci$($oAcuteLower)n de prerequisitos: PENDIENTE (modo demo)" -ForegroundColor Yellow
     Write-Host "$pendingIcon Instalaci$($oAcuteLower)n de software principal: PENDIENTE (modo demo)" -ForegroundColor Yellow
     Write-Host "$ideaIcon Este es un modo de demostraci$($oAcuteLower)n." -ForegroundColor Cyan
@@ -586,9 +716,10 @@ function Show-Menu {
         Write-Host "3. Validar Sistema Operativo"
         Write-Host "4. Validar Almacenamiento"
         Write-Host "5. Validar Seguridad"
-        Write-Host "6. Salir"
-        Write-Host "7. Ver resumen de instalacion"
-        Write-Host "8. Abrir interfaz grafica"
+        Write-Host "6. Preflight de Backup"
+        Write-Host "7. Salir"
+        Write-Host "8. Ver resumen de instalacion"
+        Write-Host "9. Abrir interfaz grafica"
         Write-Host ""
 
         $option = Read-Host "Seleccione una opcion"
@@ -611,19 +742,22 @@ function Show-Menu {
                 Test-DFESecurity
             }
             "6" {
-                Write-Host "Saliendo de DFE Toolkit."
+                Test-DFEBackup
             }
             "7" {
-                Show-DemoSummary
+                Write-Host "Saliendo de DFE Toolkit."
             }
             "8" {
+                Show-DemoSummary
+            }
+            "9" {
                 Invoke-DFEGui
             }
             default {
                 Write-Host "Opcion invalida. Intente nuevamente." -ForegroundColor Yellow
             }
         }
-    } while ($option -ne "6")
+    } while ($option -ne "7")
 }
 
 function Invoke-DFEGui {

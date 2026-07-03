@@ -1,0 +1,23 @@
+{
+  "description": "Preflight de backup IPC/RIP con fuentes obligatorias faltantes. Estado esperado: Warning.",
+  "expectedStatus": "Warning",
+  "mobiusHomeDefined": false,
+  "destination": {
+    "exists": true,
+    "writable": true
+  },
+  "tools": [],
+  "sources": [
+    { "path": "C:\\Windows\\system32\\drivers\\etc", "exists": false },
+    { "path": "C:\\RIP\\ICCPROFILES", "exists": false },
+    { "path": "C:\\RIP\\imposition", "exists": false },
+    { "path": "C:\\Program Files\\hp high performance RIP\\hpirip1\\SW\\Devices\\opindigo\\Luts", "exists": false },
+    { "path": "C:\\Unicorn\\specialJobs\\chars", "exists": false },
+    { "path": "C:\\Program Files\\hp high performance RIP\\hpirip1\\SW\\Fonts", "exists": false },
+    { "path": "C:\\Unicorn\\Import\\ICCPROFILES", "exists": false },
+    { "path": "C:\\Unicorn\\Import\\imposition", "exists": false },
+    { "path": "C:\\Unicorn\\Import\\Luts", "exists": false },
+    { "path": "C:\\Unicorn\\Import\\SpecialMarks", "exists": false },
+    { "path": "C:\\Unicorn\\Import\\ColorTables", "exists": false }
+  ]
+}

@@ -1,0 +1,276 @@
+{
+  "notes": "Manifiesto del Magic Backup. validationMode se lee de hardware-requirements.json.",
+  "serviceDetection": {
+    "notes": "TODO: definir nombres de servicios de Windows para detección automática de componentes instalados.",
+    "smServiceNames": [],
+    "ipcRipServiceNames": []
+  },
+  "profiles": {
+    "SystemManager": {
+      "description": "Backup del System Manager (Production Pro)",
+      "destination": "S:\\BACKUP",
+      "destinationDrive": "S",
+      "requiredTools": [
+        {
+          "name": "hpdfe.bat",
+          "pathEnvVar": "MOBIUS_HOME",
+          "relativePath": "hpdfe.bat",
+          "notes": "TODO: portar lógica interna a PowerShell nativo cuando esté disponible el contenido del archivo."
+        },
+        {
+          "name": "backup.bat",
+          "pathEnvVar": "MOBIUS_HOME",
+          "relativePath": "tools\\backuprestore\\backup.bat",
+          "notes": "TODO: portar lógica interna a PowerShell nativo cuando esté disponible el contenido del archivo."
+        },
+        {
+          "name": "update_TrustedHosts.bat",
+          "pathEnvVar": "MOBIUS_HOME",
+          "relativePath": "tools\\database\\utils\\update_TrustedHosts.bat",
+          "notes": "TODO: portar lógica interna a PowerShell nativo cuando esté disponible el contenido del archivo."
+        }
+      ],
+      "sources": [
+        {
+          "path": "C:\\prodflow\\exe\\tomcat\\webapps\\prodflow\\WEB-INF",
+          "pattern": "config*.*",
+          "type": "files",
+          "description": "Archivos de configuracion prodflow",
+          "blocking": true
+        },
+        {
+          "path": "C:\\prodflow\\exe\\tomcat\\webapps\\prodflow\\WEB-INF\\classes",
+          "pattern": "ripdatabeans*.*",
+          "type": "files",
+          "description": "RIP data beans",
+          "blocking": true
+        },
+        {
+          "path": "C:\\prodflow\\exe\\tomcat\\webapps\\prodflow\\WEB-INF\\classes",
+          "pattern": "ProcessorBeans*.*",
+          "type": "files",
+          "description": "Processor beans",
+          "blocking": true
+        },
+        {
+          "path": "C:\\prodflow\\exe\\tomcat\\webapps\\prodflow\\WEB-INF\\classes",
+          "pattern": "eskoConfigBeans*.*",
+          "type": "files",
+          "description": "Esko config beans",
+          "blocking": true
+        },
+        {
+          "path": "C:\\Program Files (x86)\\Common Files\\SafeNet Sentinel\\Sentinel LDK\\installed\\109670",
+          "pattern": "*.v2c",
+          "type": "files",
+          "description": "Archivos de licencia RIP",
+          "blocking": true
+        },
+        {
+          "path": "C:\\Windows\\system32\\drivers\\etc",
+          "pattern": "hosts",
+          "type": "files",
+          "description": "Archivo hosts",
+          "blocking": true
+        },
+        {
+          "path": "S:\\",
+          "pattern": "composer.sqlite",
+          "type": "files",
+          "description": "Base de datos Composer",
+          "blocking": false
+        },
+        {
+          "path": "C:\\IndigoServe\\Data\\DFE",
+          "pattern": "*",
+          "type": "folder",
+          "description": "Datos IndigoServe DFE",
+          "blocking": false
+        },
+        {
+          "path": "S:\\content_storage\\ICCPROFILES",
+          "pattern": "*",
+          "type": "folder",
+          "description": "ICC Profiles content storage",
+          "blocking": false
+        },
+        {
+          "path": "S:\\content_storage\\imposition",
+          "pattern": "*",
+          "type": "folder",
+          "description": "Imposition content storage",
+          "blocking": false
+        },
+        {
+          "path": "S:\\content_storage\\LUTs",
+          "pattern": "*",
+          "type": "folder",
+          "description": "LUTs content storage",
+          "blocking": false
+        },
+        {
+          "path": "S:\\content_storage\\special_marks",
+          "pattern": "*",
+          "type": "folder",
+          "description": "Special marks content storage",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Unicorn\\specialJobs\\chars",
+          "pattern": "*",
+          "type": "folder",
+          "description": "Snap fonts",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Unicorn\\Import\\ColorTables",
+          "pattern": "*",
+          "type": "folder",
+          "description": "Color tables Unicorn Import",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Program Files\\hp high performance RIP\\hpirip1\\SW\\Fonts",
+          "pattern": "*",
+          "type": "folder",
+          "description": "RIP fonts",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Unicorn\\Import\\ICCPROFILES",
+          "pattern": "*",
+          "type": "folder",
+          "description": "ICC Profiles Unicorn Import",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Unicorn\\Import\\imposition",
+          "pattern": "*",
+          "type": "folder",
+          "description": "Imposition Unicorn Import",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Unicorn\\Import\\Luts",
+          "pattern": "*",
+          "type": "folder",
+          "description": "LUTs Unicorn Import",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Unicorn\\Import\\SpecialMarks",
+          "pattern": "*",
+          "type": "folder",
+          "description": "Special marks Unicorn Import",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Esko\\bg_data_cms_v010\\w",
+          "pattern": "*",
+          "type": "folder",
+          "description": "Esko Color Engine CMS",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Esko\\bg_data_dgc_v010",
+          "pattern": "*",
+          "type": "folder",
+          "description": "Esko Color Engine DGC",
+          "blocking": false
+        },
+        {
+          "path": "S:\\hp_master_resources\\custom",
+          "pattern": "*",
+          "type": "folder",
+          "description": "HP Master Resources custom",
+          "blocking": false
+        }
+      ]
+    },
+    "IPC_RIP": {
+      "description": "Backup del IPC o RIP (ejecutar directamente en el nodo IPC/RIP)",
+      "destination": "C:\\BACKUP",
+      "destinationDrive": "C",
+      "requiredTools": [],
+      "sources": [
+        {
+          "path": "C:\\Windows\\system32\\drivers\\etc",
+          "pattern": "hosts",
+          "type": "files",
+          "description": "Archivo hosts",
+          "blocking": true
+        },
+        {
+          "path": "C:\\RIP\\ICCPROFILES",
+          "pattern": "*",
+          "type": "folder",
+          "description": "ICC Profiles RIP",
+          "blocking": false
+        },
+        {
+          "path": "C:\\RIP\\imposition",
+          "pattern": "*",
+          "type": "folder",
+          "description": "Imposition RIP",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Program Files\\hp high performance RIP\\hpirip1\\SW\\Devices\\opindigo\\Luts",
+          "pattern": "*",
+          "type": "folder",
+          "description": "LUTs RIP",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Unicorn\\specialJobs\\chars",
+          "pattern": "*",
+          "type": "folder",
+          "description": "Snap fonts",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Program Files\\hp high performance RIP\\hpirip1\\SW\\Fonts",
+          "pattern": "*",
+          "type": "folder",
+          "description": "RIP fonts",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Unicorn\\Import\\ICCPROFILES",
+          "pattern": "*",
+          "type": "folder",
+          "description": "ICC Profiles Unicorn Import",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Unicorn\\Import\\imposition",
+          "pattern": "*",
+          "type": "folder",
+          "description": "Imposition Unicorn Import",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Unicorn\\Import\\Luts",
+          "pattern": "*",
+          "type": "folder",
+          "description": "LUTs Unicorn Import",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Unicorn\\Import\\SpecialMarks",
+          "pattern": "*",
+          "type": "folder",
+          "description": "Special marks Unicorn Import",
+          "blocking": false
+        },
+        {
+          "path": "C:\\Unicorn\\Import\\ColorTables",
+          "pattern": "*",
+          "type": "folder",
+          "description": "Color tables Unicorn Import",
+          "blocking": false
+        }
+      ]
+    }
+  }
+}

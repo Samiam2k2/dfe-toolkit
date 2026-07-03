@@ -1,0 +1,36 @@
+{
+  "description": "Preflight de backup SM con fuentes obligatorias y herramientas faltantes, y destino inaccesible. Estado esperado: Warning.",
+  "expectedStatus": "Warning",
+  "mobiusHomeDefined": false,
+  "destination": {
+    "exists": false,
+    "writable": false
+  },
+  "tools": [
+    { "name": "hpdfe.bat", "exists": false },
+    { "name": "backup.bat", "exists": false },
+    { "name": "update_TrustedHosts.bat", "exists": false }
+  ],
+  "sources": [
+    { "path": "C:\\prodflow\\exe\\tomcat\\webapps\\prodflow\\WEB-INF", "exists": false },
+    { "path": "C:\\prodflow\\exe\\tomcat\\webapps\\prodflow\\WEB-INF\\classes", "exists": false },
+    { "path": "C:\\Program Files (x86)\\Common Files\\SafeNet Sentinel\\Sentinel LDK\\installed\\109670", "exists": true },
+    { "path": "C:\\Windows\\system32\\drivers\\etc", "exists": true },
+    { "path": "S:\\", "exists": false },
+    { "path": "C:\\IndigoServe\\Data\\DFE", "exists": false },
+    { "path": "S:\\content_storage\\ICCPROFILES", "exists": false },
+    { "path": "S:\\content_storage\\imposition", "exists": false },
+    { "path": "S:\\content_storage\\LUTs", "exists": false },
+    { "path": "S:\\content_storage\\special_marks", "exists": false },
+    { "path": "C:\\Unicorn\\specialJobs\\chars", "exists": false },
+    { "path": "C:\\Unicorn\\Import\\ColorTables", "exists": false },
+    { "path": "C:\\Program Files\\hp high performance RIP\\hpirip1\\SW\\Fonts", "exists": false },
+    { "path": "C:\\Unicorn\\Import\\ICCPROFILES", "exists": false },
+    { "path": "C:\\Unicorn\\Import\\imposition", "exists": false },
+    { "path": "C:\\Unicorn\\Import\\Luts", "exists": false },
+    { "path": "C:\\Unicorn\\Import\\SpecialMarks", "exists": false },
+    { "path": "C:\\Esko\\bg_data_cms_v010\\w", "exists": false },
+    { "path": "C:\\Esko\\bg_data_dgc_v010", "exists": false },
+    { "path": "S:\\hp_master_resources\\custom", "exists": false }
+  ]
+}

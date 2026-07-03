@@ -22,13 +22,15 @@ dfe-toolkit/
 │       ├── Validate-Network.ps1
 │       ├── Validate-OperatingSystem.ps1
 │       ├── Validate-Storage.ps1
-│       └── Validate-Security.ps1
+│       ├── Validate-Security.ps1
+│       └── Preflight-Backup.ps1
 ├── tests/
 │   ├── Test-ValidateHardware.ps1
 │   ├── Test-ValidateNetwork.ps1
 │   ├── Test-ValidateOperatingSystem.ps1
 │   ├── Test-ValidateStorage.ps1
 │   ├── Test-ValidateSecurity.ps1
+│   ├── Test-PreflightBackup.ps1
 │   └── fixtures/
 │       ├── z8-g5-win10.json
 │       ├── proliant-gen10-ws2019.json
@@ -52,6 +54,11 @@ dfe-toolkit/
 │       │   ├── security-admin.json
 │       │   ├── security-no-admin.json
 │       │   └── security-uac-off.json
+│       ├── backup/
+│       │   ├── backup-sm-ok.json
+│       │   ├── backup-sm-missing.json
+│       │   ├── backup-ipc-ok.json
+│       │   └── backup-ipc-missing.json
 │       └── manifests/
 │           ├── hardware-requirements-enforcing.json
 │           └── storage-requirements-enforcing.json
@@ -62,7 +69,8 @@ dfe-toolkit/
 │   ├── hardware-requirements.json
 │   ├── network-requirements.json
 │   ├── storage-requirements.json
-│   └── security-requirements.json
+│   ├── security-requirements.json
+│   └── backup-manifest.json
 ├── logs/
 └── README.md
 ```
@@ -104,9 +112,10 @@ El menu de texto incluye estas opciones:
 3. Validar Sistema Operativo
 4. Validar Almacenamiento
 5. Validar Seguridad
-6. Salir
-7. Ver resumen de instalacion
-8. Abrir interfaz grafica
+6. Preflight de Backup
+7. Salir
+8. Ver resumen de instalacion
+9. Abrir interfaz grafica
 
 ## GUI WPF
 
@@ -118,11 +127,11 @@ Ejecutar directamente:
 .\src\Gui.ps1
 ```
 
-Tambien se puede abrir desde el menu principal con la opcion `8. Abrir interfaz grafica`.
+Tambien se puede abrir desde el menu principal con la opcion `9. Abrir interfaz grafica`.
 
-La GUI permite seleccionar producto, modelo y version, cargar los pasos `01. Validar hardware`, `02. Validar red`, `03. Validar sistema operativo`, `04. Validar almacenamiento` y `05. Validar seguridad` y ver los resultados en pantalla. Al cerrar, guarda el estado de la sesion en `config/session.json`. Cada paso comparte un unico panel de resultado; el boton de cada paso queda como `Ver / Repetir` tras completarse para poder volver a ejecutarlo y mostrar de nuevo su resultado.
+La GUI permite seleccionar producto, modelo y version, cargar los pasos `01. Validar hardware`, `02. Validar red`, `03. Validar sistema operativo`, `04. Validar almacenamiento`, `05. Validar seguridad` y `06. Preflight de backup` y ver los resultados en pantalla. Al cerrar, guarda el estado de la sesion en `config/session.json`. Cada paso comparte un unico panel de resultado; el boton de cada paso queda como `Ver / Repetir` tras completarse para poder volver a ejecutarlo y mostrar de nuevo su resultado.
 
-Los pasos `01. Validar hardware`, `02. Validar red`, `03. Validar sistema operativo`, `04. Validar almacenamiento` y `05. Validar seguridad` delegan en `scripts/validation/Validate-Hardware.ps1`, `scripts/validation/Validate-Network.ps1`, `scripts/validation/Validate-OperatingSystem.ps1`, `scripts/validation/Validate-Storage.ps1` y `scripts/validation/Validate-Security.ps1` respectivamente (local si existe, si no se descarga de GitHub con cache-bust). El estado del paso refleja el `Status` real devuelto por el validador: `Pass` -> `Completado`, `Warning` -> `Completado con advertencias` (cuenta como completado en la barra de progreso), `Fail` -> `Fallido`. El modo pruebas ya no es el comportamiento por defecto y solo se aplica si la GUI pasa `-TestMode`.
+Los pasos `01. Validar hardware`, `02. Validar red`, `03. Validar sistema operativo`, `04. Validar almacenamiento`, `05. Validar seguridad` y `06. Preflight de backup` delegan en `scripts/validation/Validate-Hardware.ps1`, `scripts/validation/Validate-Network.ps1`, `scripts/validation/Validate-OperatingSystem.ps1`, `scripts/validation/Validate-Storage.ps1`, `scripts/validation/Validate-Security.ps1` y `scripts/validation/Preflight-Backup.ps1` respectivamente (local si existe, si no se descarga de GitHub con cache-bust). El estado del paso refleja el `Status` real devuelto por el validador: `Pass` -> `Completado`, `Warning` -> `Completado con advertencias` (cuenta como completado en la barra de progreso), `Fail` -> `Fallido`. El modo pruebas ya no es el comportamiento por defecto y solo se aplica si la GUI pasa `-TestMode`.
 
 El archivo `manifests/assessment-checks.json` contiene el manifiesto inicial de verificaciones DFE Assessment para Production Pro Commercial 8.3, organizado por categoria.
 
@@ -231,9 +240,27 @@ Contra un JSON de seguridad simulada (pruebas en laboratorio/VM):
 .\scripts\validation\Validate-Security.ps1 -SystemInfoPath .\tests\fixtures\security\security-admin.json
 ```
 
+## Preflight de Backup
+
+`scripts/validation/Preflight-Backup.ps1` es un script independiente (Windows PowerShell 5.1, sin dependencias) que ejecuta los 3 checks de preflight de backup: `check-backup-sources` (comprueba existencia de fuentes), `check-backup-destination` (comprueba unidad de destino y su escritura) y `check-backup-tools` (comprueba variables y herramientas requeridas en SystemManager). Devuelve al pipeline un objeto con la misma forma que los otros validadores (`Status`, `RealStatus`, `ValidationMode`, `DegradedByMode`, `TestModeApplied`, `Checks`) mas resúmenes específicos (`Sources`, `Destination`, `Tools`) y `SimulatedSource`.
+
+El validador aplica el mismo `validationMode` (informational/enforcing) leido de `hardware-requirements.json` y `-TestMode`.
+
+Contra el sistema real:
+
+```powershell
+.\scripts\validation\Preflight-Backup.ps1 -Profile "SystemManager"
+```
+
+Contra un JSON de seguridad simulada (pruebas en laboratorio/VM):
+
+```powershell
+.\scripts\validation\Preflight-Backup.ps1 -SystemInfoPath .\tests\fixtures\backup\backup-sm-ok.json -Profile "SystemManager"
+```
+
 ## Pruebas
 
-`tests/Test-ValidateHardware.ps1`, `tests/Test-ValidateNetwork.ps1`, `tests/Test-ValidateOperatingSystem.ps1`, `tests/Test-ValidateStorage.ps1` y `tests/Test-ValidateSecurity.ps1` corren cada validador contra sus fixtures (`tests/fixtures/`, `tests/fixtures/network/`, `tests/fixtures/os/`, `tests/fixtures/storage/` y `tests/fixtures/security/`), comparan el `Status` esperado vs obtenido y muestran un resumen PASS/FAIL por caso. Los tests de hardware, SO, almacenamiento y seguridad ademas corren un caso `enforcing` (usando sus respectivos manifiestos de prueba enforcing/enforcing hardware) para verificar que los `Fail` reales bloquean cuando no hay degradacion. Salen con codigo distinto de 0 si algun caso falla.
+`tests/Test-ValidateHardware.ps1`, `tests/Test-ValidateNetwork.ps1`, `tests/Test-ValidateOperatingSystem.ps1`, `tests/Test-ValidateStorage.ps1`, `tests/Test-ValidateSecurity.ps1` y `tests/Test-PreflightBackup.ps1` corren cada validador contra sus fixtures (`tests/fixtures/`, `tests/fixtures/network/`, `tests/fixtures/os/`, `tests/fixtures/storage/`, `tests/fixtures/security/` y `tests/fixtures/backup/`), comparan el `Status` esperado vs obtenido y muestran un resumen PASS/FAIL por caso. Los tests de hardware, SO, almacenamiento y seguridad ademas corren un caso `enforcing` (usando sus respectivos manifiestos de prueba enforcing/enforcing hardware) para verificar que los `Fail` reales bloquean cuando no hay degradacion. Salen con codigo distinto de 0 si algun caso falla.
 
 ```powershell
 .\tests\Test-ValidateHardware.ps1
@@ -241,6 +268,7 @@ Contra un JSON de seguridad simulada (pruebas en laboratorio/VM):
 .\tests\Test-ValidateOperatingSystem.ps1
 .\tests\Test-ValidateStorage.ps1
 .\tests\Test-ValidateSecurity.ps1
+.\tests\Test-PreflightBackup.ps1
 ```
 
 ## Notas

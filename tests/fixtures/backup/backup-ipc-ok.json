@@ -1,0 +1,23 @@
+{
+  "description": "Preflight de backup IPC/RIP exitoso con todas las fuentes y destino listos. Estado esperado: Pass.",
+  "expectedStatus": "Pass",
+  "mobiusHomeDefined": false,
+  "destination": {
+    "exists": true,
+    "writable": true
+  },
+  "tools": [],
+  "sources": [
+    { "path": "C:\\Windows\\system32\\drivers\\etc", "exists": true },
+    { "path": "C:\\RIP\\ICCPROFILES", "exists": true },
+    { "path": "C:\\RIP\\imposition", "exists": true },
+    { "path": "C:\\Program Files\\hp high performance RIP\\hpirip1\\SW\\Devices\\opindigo\\Luts", "exists": true },
+    { "path": "C:\\Unicorn\\specialJobs\\chars", "exists": true },
+    { "path": "C:\\Program Files\\hp high performance RIP\\hpirip1\\SW\\Fonts", "exists": true },
+    { "path": "C:\\Unicorn\\Import\\ICCPROFILES", "exists": true },
+    { "path": "C:\\Unicorn\\Import\\imposition", "exists": true },
+    { "path": "C:\\Unicorn\\Import\\Luts", "exists": true },
+    { "path": "C:\\Unicorn\\Import\\SpecialMarks", "exists": true },
+    { "path": "C:\\Unicorn\\Import\\ColorTables", "exists": true }
+  ]
+}

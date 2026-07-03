@@ -1,3 +1,4 @@
+Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
 Write-Host "* DFE-Toolkit v0.1" -ForegroundColor Cyan
 Write-Host "==============================================" -ForegroundColor Gray
 Write-Host "+ Descargando la interfaz grafica (GUI)..." -ForegroundColor Cyan

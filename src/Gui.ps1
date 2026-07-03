@@ -3,7 +3,7 @@
     Interfaz grafica WPF para DFE-Toolkit.
 .DESCRIPTION
     GUI compatible con Windows PowerShell 5.1+ para ejecutar la validacion
-    real de servidor DFE desde un unico paso.
+    consolidada de especificaciones del servidor DFE.
 #>
 
 if ([Threading.Thread]::CurrentThread.ApartmentState -ne "STA") {
@@ -44,12 +44,7 @@ $session = @{
     Product = "Production Pro"
     Model = "Commercial"
     Version = "8.3"
-    HardwareStatus = "Pending"
-    NetworkStatus = "Pending"
-    OperatingSystemStatus = "Pending"
-    StorageStatus = "Pending"
-    SecurityStatus = "Pending"
-    BackupStatus = "Pending"
+    SpecsStatus = "Pending"
     LastResult = ""
 }
 
@@ -59,12 +54,7 @@ if (Test-Path -Path $sessionPath -PathType Leaf) {
         if ($loadedSession.Product) { $session.Product = $loadedSession.Product }
         if ($loadedSession.Model) { $session.Model = $loadedSession.Model }
         if ($loadedSession.Version) { $session.Version = $loadedSession.Version }
-        if ($loadedSession.HardwareStatus) { $session.HardwareStatus = $loadedSession.HardwareStatus }
-        if ($loadedSession.NetworkStatus) { $session.NetworkStatus = $loadedSession.NetworkStatus }
-        if ($loadedSession.OperatingSystemStatus) { $session.OperatingSystemStatus = $loadedSession.OperatingSystemStatus }
-        if ($loadedSession.StorageStatus) { $session.StorageStatus = $loadedSession.StorageStatus }
-        if ($loadedSession.SecurityStatus) { $session.SecurityStatus = $loadedSession.SecurityStatus }
-        if ($loadedSession.BackupStatus) { $session.BackupStatus = $loadedSession.BackupStatus }
+        if ($loadedSession.SpecsStatus) { $session.SpecsStatus = $loadedSession.SpecsStatus }
         if ($loadedSession.LastResult) { $session.LastResult = $loadedSession.LastResult }
     }
     catch {
@@ -101,713 +91,6 @@ function Get-StatusText {
         "Failed" { return "$($statusIcons.Failed) Fallido" }
         "Running" { return "$($statusIcons.Running) En ejecucion..." }
         default { return "$($statusIcons.Pending) Pendiente" }
-    }
-}
-
-function Get-ValidateHardwareScriptBlock {
-    [CmdletBinding()]
-    param()
-
-    $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Hardware.ps1"
-    if (Test-Path -Path $localScript -PathType Leaf) {
-        return @{
-            Command = $localScript
-            IsFile = $true
-        }
-    }
-
-    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-Hardware.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
-    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
-        "Cache-Control" = "no-cache"
-        "Pragma" = "no-cache"
-    } -ErrorAction Stop
-
-    return @{
-        Command = [scriptblock]::Create($scriptContent)
-        IsFile = $false
-    }
-}
-
-function Invoke-HardwareRequirementsValidation {
-    [CmdletBinding()]
-    param(
-        [string]$Product,
-        [string]$Version,
-        [string]$ManifestPath,
-        [switch]$TestMode
-    )
-
-    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
-    $checkIcon = [char]::ConvertFromUtf32(0x2705)
-    $failIcon = [char]::ConvertFromUtf32(0x274C)
-    $infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
-
-    $validator = Get-ValidateHardwareScriptBlock
-
-    $arguments = @{
-        Product = $Product
-        Version = $Version
-    }
-    if ($ManifestPath) {
-        $arguments["ManifestPath"] = $ManifestPath
-    }
-    if ($TestMode) {
-        $arguments["TestMode"] = $true
-    }
-
-    $result = & $validator.Command @arguments
-
-    $lines = @()
-    $lines += "Validacion de hardware"
-    $lines += "======================"
-    $lines += "Producto evaluado: $($result.Product) $($result.Version)"
-    $lines += ""
-    $lines += "Servidor detectado:"
-    $lines += "  Fabricante: $($result.Manufacturer)"
-    $lines += "  Modelo: $($result.Model)"
-    $lines += "  Sistema operativo: $($result.OperatingSystem)"
-    $lines += "  Memoria: $($result.MemoryGB) GB"
-    $lines += "  CPU: sockets $($result.CpuSockets), nucleos $($result.CpuCores)"
-    if ($result.SimulatedSource) {
-        $lines += "  (Origen: datos simulados de laboratorio)"
-    }
-    $lines += ""
-    $lines += "Checks:"
-
-    foreach ($check in @($result.Checks)) {
-        switch ($check.Status) {
-            "Pass" { $icon = $checkIcon }
-            "Fail" { $icon = $failIcon }
-            "Info" { $icon = $infoIcon }
-            default { $icon = $warningIcon }
-        }
-        $lines += "  $icon [$($check.Status)] $($check.Name)"
-        $lines += "      $($check.Detail)"
-    }
-
-    $lines += ""
-    switch ($result.Status) {
-        "Pass" { $lines += "$checkIcon Estado general: Pass." }
-        "Warning" { $lines += "$warningIcon Estado general: Completado con advertencias." }
-        default { $lines += "$failIcon Estado general: Fail." }
-    }
-
-    if ($result.DegradedByMode) {
-        $lines += ""
-        $lines += "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto para validar contra un servidor real."
-    }
-
-    if ($result.TestModeApplied) {
-        $lines += ""
-        $lines += "Modo pruebas activo: estado general forzado a Pass; los resultados por check reflejan la realidad."
-    }
-
-    # Se adjunta el objeto de resultado como ultimo elemento para que el llamador
-    # pueda leer el Status real sin re-parsear el texto.
-    return [pscustomobject]@{
-        Text = ($lines -join [Environment]::NewLine)
-        Result = $result
-    }
-}
-
-function Get-ValidateNetworkScriptBlock {
-    [CmdletBinding()]
-    param()
-
-    $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Network.ps1"
-    if (Test-Path -Path $localScript -PathType Leaf) {
-        return @{
-            Command = $localScript
-            IsFile = $true
-        }
-    }
-
-    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-Network.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
-    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
-        "Cache-Control" = "no-cache"
-        "Pragma" = "no-cache"
-    } -ErrorAction Stop
-
-    return @{
-        Command = [scriptblock]::Create($scriptContent)
-        IsFile = $false
-    }
-}
-
-function Invoke-NetworkRequirementsValidation {
-    [CmdletBinding()]
-    param(
-        [string]$ManifestPath,
-        [string]$AssessmentPath,
-        [switch]$TestMode
-    )
-
-    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
-    $checkIcon = [char]::ConvertFromUtf32(0x2705)
-    $failIcon = [char]::ConvertFromUtf32(0x274C)
-    $infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
-
-    $validator = Get-ValidateNetworkScriptBlock
-
-    $arguments = @{}
-    if ($ManifestPath) {
-        $arguments["ManifestPath"] = $ManifestPath
-    }
-    if ($AssessmentPath) {
-        $arguments["AssessmentPath"] = $AssessmentPath
-    }
-    if ($TestMode) {
-        $arguments["TestMode"] = $true
-    }
-
-    $result = & $validator.Command @arguments
-
-    $lines = @()
-    $lines += "Validacion de red"
-    $lines += "================="
-    if ($result.SimulatedSource) {
-        $lines += "(Origen: datos simulados de laboratorio)"
-        $lines += ""
-    }
-
-    $lines += "Adaptadores:"
-    $lines += "  Esperados: $($result.Adapters.Expected -join ', ')"
-    if ($result.Adapters.MissingExpected.Count -gt 0) {
-        $lines += "  Faltantes: $($result.Adapters.MissingExpected -join ', ')"
-    }
-    else {
-        $lines += "  Faltantes: ninguno"
-    }
-    if ($result.Adapters.Unexpected.Count -gt 0) {
-        $lines += "  No esperados: $($result.Adapters.Unexpected -join ', ')"
-    }
-    else {
-        $lines += "  No esperados: ninguno"
-    }
-    $lines += ""
-    $lines += "Checks:"
-
-    foreach ($check in @($result.Checks)) {
-        switch ($check.Status) {
-            "Pass" { $icon = $checkIcon }
-            "Fail" { $icon = $failIcon }
-            "Info" { $icon = $infoIcon }
-            default { $icon = $warningIcon }
-        }
-        $lines += "  $icon [$($check.Status)] $($check.Name)"
-        $lines += "      $($check.Detail)"
-    }
-
-    $lines += ""
-    switch ($result.Status) {
-        "Pass" { $lines += "$checkIcon Estado general: Pass." }
-        "Warning" { $lines += "$warningIcon Estado general: Completado con advertencias." }
-        default { $lines += "$failIcon Estado general: Fail." }
-    }
-
-    if ($result.TestModeApplied) {
-        $lines += ""
-        $lines += "Modo pruebas activo: estado general forzado a Pass; los resultados por check reflejan la realidad."
-    }
-
-    # Se adjunta el objeto de resultado como ultimo elemento para que el llamador
-    # pueda leer el Status real sin re-parsear el texto.
-    return [pscustomobject]@{
-        Text = ($lines -join [Environment]::NewLine)
-        Result = $result
-    }
-}
-
-function Get-ValidateOperatingSystemScriptBlock {
-    [CmdletBinding()]
-    param()
-
-    $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-OperatingSystem.ps1"
-    if (Test-Path -Path $localScript -PathType Leaf) {
-        return @{
-            Command = $localScript
-            IsFile = $true
-        }
-    }
-
-    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-OperatingSystem.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
-    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
-        "Cache-Control" = "no-cache"
-        "Pragma" = "no-cache"
-    } -ErrorAction Stop
-
-    return @{
-        Command = [scriptblock]::Create($scriptContent)
-        IsFile = $false
-    }
-}
-
-function Invoke-OSRequirementsValidation {
-    [CmdletBinding()]
-    param(
-        [string]$Product,
-        [string]$Version,
-        [string]$ManifestPath,
-        [string]$AssessmentPath,
-        [switch]$TestMode
-    )
-
-    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
-    $checkIcon = [char]::ConvertFromUtf32(0x2705)
-    $failIcon = [char]::ConvertFromUtf32(0x274C)
-    $infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
-
-    $validator = Get-ValidateOperatingSystemScriptBlock
-
-    $arguments = @{
-        Product = $Product
-        Version = $Version
-    }
-    if ($ManifestPath) {
-        $arguments["ManifestPath"] = $ManifestPath
-    }
-    if ($AssessmentPath) {
-        $arguments["AssessmentPath"] = $AssessmentPath
-    }
-    if ($TestMode) {
-        $arguments["TestMode"] = $true
-    }
-
-    $result = & $validator.Command @arguments
-
-    $lines = @()
-    $lines += "Validacion de sistema operativo"
-    $lines += "==============================="
-    $lines += "Producto evaluado: $($result.Product) $($result.Version)"
-    $lines += ""
-    $lines += "Servidor detectado:"
-    $lines += "  Fabricante: $($result.Manufacturer)"
-    $lines += "  Modelo: $($result.Model)"
-    $lines += "  Sistema operativo: $($result.OperatingSystem)"
-    $lines += "  Arquitectura: $($result.OSArchitecture)"
-    if ($result.SimulatedSource) {
-        $lines += "  (Origen: datos simulados de laboratorio)"
-    }
-    $lines += ""
-    $lines += "Checks:"
-
-    foreach ($check in @($result.Checks)) {
-        switch ($check.Status) {
-            "Pass" { $icon = $checkIcon }
-            "Fail" { $icon = $failIcon }
-            "Info" { $icon = $infoIcon }
-            default { $icon = $warningIcon }
-        }
-        $lines += "  $icon [$($check.Status)] $($check.Name)"
-        $lines += "      $($check.Detail)"
-    }
-
-    $lines += ""
-    switch ($result.Status) {
-        "Pass" { $lines += "$checkIcon Estado general: Pass." }
-        "Warning" { $lines += "$warningIcon Estado general: Completado con advertencias." }
-        default { $lines += "$failIcon Estado general: Fail." }
-    }
-
-    if ($result.DegradedByMode) {
-        $lines += ""
-        $lines += "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto para validar contra un servidor real."
-    }
-
-    if ($result.TestModeApplied) {
-        $lines += ""
-        $lines += "Modo pruebas activo: estado general forzado a Pass; los resultados por check reflejan la realidad."
-    }
-
-    # Se adjunta el objeto de resultado como ultimo elemento para que el llamador
-    # pueda leer el Status real sin re-parsear el texto.
-    return [pscustomobject]@{
-        Text = ($lines -join [Environment]::NewLine)
-        Result = $result
-    }
-}
-
-function Get-ValidateStorageScriptBlock {
-    [CmdletBinding()]
-    param()
-
-    $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Storage.ps1"
-    if (Test-Path -Path $localScript -PathType Leaf) {
-        return @{
-            Command = $localScript
-            IsFile = $true
-        }
-    }
-
-    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-Storage.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
-    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
-        "Cache-Control" = "no-cache"
-        "Pragma" = "no-cache"
-    } -ErrorAction Stop
-
-    return @{
-        Command = [scriptblock]::Create($scriptContent)
-        IsFile = $false
-    }
-}
-
-function Invoke-StorageRequirementsValidation {
-    [CmdletBinding()]
-    param(
-        [string]$Product,
-        [string]$Version,
-        [string]$Profile = "SystemManager",
-        [string]$ManifestPath,
-        [string]$AssessmentPath,
-        [string]$HardwareManifestPath,
-        [switch]$TestMode
-    )
-
-    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
-    $checkIcon = [char]::ConvertFromUtf32(0x2705)
-    $failIcon = [char]::ConvertFromUtf32(0x274C)
-    $infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
-
-    $validator = Get-ValidateStorageScriptBlock
-
-    $arguments = @{
-        Product = $Product
-        Version = $Version
-        Profile = $Profile
-    }
-    if ($ManifestPath) {
-        $arguments["ManifestPath"] = $ManifestPath
-    }
-    if ($AssessmentPath) {
-        $arguments["AssessmentPath"] = $AssessmentPath
-    }
-    if ($HardwareManifestPath) {
-        $arguments["HardwareManifestPath"] = $HardwareManifestPath
-    }
-    if ($TestMode) {
-        $arguments["TestMode"] = $true
-    }
-
-    $result = & $validator.Command @arguments
-
-    $lines = @()
-    $lines += "Validacion de almacenamiento"
-    $lines += "============================"
-    $lines += "Producto evaluado: $($result.Product) $($result.Version)"
-    $lines += "Perfil: $($result.Profile)"
-    $lines += ""
-    $lines += "Unidades detectadas:"
-    $lines += "  Esperadas: $($result.Drives.Expected -join ', ')"
-    if ($result.Drives.MissingExpected.Count -gt 0) {
-        $lines += "  Faltantes: $($result.Drives.MissingExpected -join ', ')"
-    }
-    else {
-        $lines += "  Faltantes: ninguna"
-    }
-    if ($result.Drives.Unexpected.Count -gt 0) {
-        $lines += "  No esperadas: $($result.Drives.Unexpected -join ', ')"
-    }
-    else {
-        $lines += "  No esperadas: ninguna"
-    }
-    if ($result.SimulatedSource) {
-        $lines += "  (Origen: datos simulados de laboratorio)"
-    }
-    $lines += ""
-    $lines += "Checks:"
-
-    foreach ($check in @($result.Checks)) {
-        switch ($check.Status) {
-            "Pass" { $icon = $checkIcon }
-            "Fail" { $icon = $failIcon }
-            "Info" { $icon = $infoIcon }
-            default { $icon = $warningIcon }
-        }
-        $lines += "  $icon [$($check.Status)] $($check.Name)"
-        $lines += "      $($check.Detail)"
-    }
-
-    $lines += ""
-    switch ($result.Status) {
-        "Pass" { $lines += "$checkIcon Estado general: Pass." }
-        "Warning" { $lines += "$warningIcon Estado general: Completado con advertencias." }
-        default { $lines += "$failIcon Estado general: Fail." }
-    }
-
-    if ($result.DegradedByMode) {
-        $lines += ""
-        $lines += "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto de hardware para validar contra un servidor real."
-    }
-
-    if ($result.TestModeApplied) {
-        $lines += ""
-        $lines += "Modo pruebas activo: estado general forzado a Pass; los resultados por check reflejan la realidad."
-    }
-
-    # Se adjunta el objeto de resultado como ultimo elemento para que el llamador
-    # pueda leer el Status real sin re-parsear el texto.
-    return [pscustomobject]@{
-        Text = ($lines -join [Environment]::NewLine)
-        Result = $result
-    }
-}
-
-function Get-ValidateSecurityScriptBlock {
-    [CmdletBinding()]
-    param()
-
-    $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Security.ps1"
-    if (Test-Path -Path $localScript -PathType Leaf) {
-        return @{
-            Command = $localScript
-            IsFile = $true
-        }
-    }
-
-    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-Security.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
-    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
-        "Cache-Control" = "no-cache"
-        "Pragma" = "no-cache"
-    } -ErrorAction Stop
-
-    return @{
-        Command = [scriptblock]::Create($scriptContent)
-        IsFile = $false
-    }
-}
-
-function Invoke-SecurityRequirementsValidation {
-    [CmdletBinding()]
-    param(
-        [string]$Product,
-        [string]$Version,
-        [string]$ManifestPath,
-        [string]$AssessmentPath,
-        [string]$HardwareManifestPath,
-        [switch]$TestMode
-    )
-
-    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
-    $checkIcon = [char]::ConvertFromUtf32(0x2705)
-    $failIcon = [char]::ConvertFromUtf32(0x274C)
-    $infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
-
-    $validator = Get-ValidateSecurityScriptBlock
-
-    $arguments = @{
-        Product = $Product
-        Version = $Version
-    }
-    if ($ManifestPath) {
-        $arguments["ManifestPath"] = $ManifestPath
-    }
-    if ($AssessmentPath) {
-        $arguments["AssessmentPath"] = $AssessmentPath
-    }
-    if ($HardwareManifestPath) {
-        $arguments["HardwareManifestPath"] = $HardwareManifestPath
-    }
-    if ($TestMode) {
-        $arguments["TestMode"] = $true
-    }
-
-    $result = & $validator.Command @arguments
-
-    $lines = @()
-    $lines += "Validacion de seguridad"
-    $lines += "======================="
-    $lines += "Producto evaluado: $($result.Product) $($result.Version)"
-    
-    $isAdminStr = if ($result.Security.isAdmin) { "si" } else { "no" }
-    $lines += "Administrador: ${isAdminStr}"
-    
-    $uacStr = "desconocido"
-    if ($null -ne $result.Security.uacEnabled) {
-        $uacStr = if ($result.Security.uacEnabled) { "activo" } else { "desactivado" }
-    }
-    $lines += "UAC: ${uacStr}"
-
-    $firewallDetails = @()
-    foreach ($p in @($result.Security.firewallProfiles)) {
-        $nameStr = $p.Name
-        $stateStr = if ($p.Enabled) { "activo" } else { "desactivado" }
-        $firewallDetails += "${nameStr}: ${stateStr}"
-    }
-    if ($firewallDetails.Count -gt 0) {
-        $lines += "Firewall: $($firewallDetails -join '; ')"
-    }
-    else {
-        $lines += "Firewall: sin perfiles detectados"
-    }
-    
-    if ($result.SimulatedSource) {
-        $lines += "  (Origen: datos simulados de laboratorio)"
-    }
-    $lines += ""
-    $lines += "Checks:"
-
-    foreach ($check in @($result.Checks)) {
-        switch ($check.Status) {
-            "Pass" { $icon = $checkIcon }
-            "Fail" { $icon = $failIcon }
-            "Info" { $icon = $infoIcon }
-            default { $icon = $warningIcon }
-        }
-        $lines += "  $icon [$($check.Status)] $($check.Name)"
-        $lines += "      $($check.Detail)"
-    }
-
-    $lines += ""
-    switch ($result.Status) {
-        "Pass" { $lines += "$checkIcon Estado general: Pass." }
-        "Warning" { $lines += "$warningIcon Estado general: Completado con advertencias." }
-        default { $lines += "$failIcon Estado general: Fail." }
-    }
-
-    if ($result.DegradedByMode) {
-        $lines += ""
-        $lines += "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto de hardware para validar contra un servidor real."
-    }
-
-    if ($result.TestModeApplied) {
-        $lines += ""
-        $lines += "Modo pruebas activo: estado general forzado a Pass; los resultados por check reflejan la realidad."
-    }
-
-    return [pscustomobject]@{
-        Text = ($lines -join [Environment]::NewLine)
-        Result = $result
-    }
-}
-
-function Get-PreflightBackupScriptBlock {
-    [CmdletBinding()]
-    param()
-
-    $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Preflight-Backup.ps1"
-    if (Test-Path -Path $localScript -PathType Leaf) {
-        return @{
-            Command = $localScript
-            IsFile = $true
-        }
-    }
-
-    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Preflight-Backup.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
-    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
-        "Cache-Control" = "no-cache"
-        "Pragma" = "no-cache"
-    } -ErrorAction Stop
-
-    return @{
-        Command = [scriptblock]::Create($scriptContent)
-        IsFile = $false
-    }
-}
-
-function Invoke-PreflightBackupValidation {
-    [CmdletBinding()]
-    param(
-        [string]$Product,
-        [string]$Version,
-        [string]$Profile,
-        [string]$ManifestPath,
-        [string]$HardwareManifestPath,
-        [switch]$TestMode
-    )
-
-    $warningIcon = [char]::ConvertFromUtf32(0x26A0) + [char]0xFE0F
-    $checkIcon = [char]::ConvertFromUtf32(0x2705)
-    $failIcon = [char]::ConvertFromUtf32(0x274C)
-    $infoIcon = [char]::ConvertFromUtf32(0x2139) + [char]0xFE0F
-
-    $validator = Get-PreflightBackupScriptBlock
-
-    $arguments = @{
-        Product = $Product
-        Version = $Version
-        Profile = $Profile
-    }
-    if ($ManifestPath) {
-        $arguments["ManifestPath"] = $ManifestPath
-    }
-    if ($HardwareManifestPath) {
-        $arguments["HardwareManifestPath"] = $HardwareManifestPath
-    }
-    if ($TestMode) {
-        $arguments["TestMode"] = $true
-    }
-
-    $result = & $validator.Command @arguments
-
-    $lines = @()
-    $lines += "Preflight de Backup"
-    $lines += "==================="
-    $lines += "Perfil evaluado: $($result.Profile)"
-    $lines += "Producto: $($result.Product) $($result.Version)"
-    $lines += ""
-    
-    $lines += "Resumen de Origen:"
-    $lines += "  Fuentes totales: $($result.Sources.Total)"
-    $lines += "  Encontradas: $($result.Sources.FoundCount)"
-    $lines += "  Faltantes: $($result.Sources.MissingCount)"
-    $lines += ""
-
-    $lines += "Resumen de Destino:"
-    $lines += "  Ruta: $($result.Destination.Path)"
-    $destExistsStr = if ($result.Destination.Exists) { "si" } else { "no" }
-    $destWritableStr = if ($result.Destination.Writable) { "si" } else { "no" }
-    $lines += "  Existe: ${destExistsStr}"
-    $lines += "  Escribible: ${destWritableStr}"
-    $lines += ""
-
-    if ($result.Profile -eq "SystemManager") {
-        $lines += "Resumen de Herramientas:"
-        $mobiusHomeStr = if ($result.Tools.MobiusHomeDefined) { "definida" } else { "no definida" }
-        $lines += "  MOBIUS_HOME: ${mobiusHomeStr}"
-        $lines += "  Encontradas: $($result.Tools.Found -join ', ')"
-        if ($result.Tools.Missing.Count -gt 0) {
-            $lines += "  Faltantes: $($result.Tools.Missing -join ', ')"
-        }
-        $lines += ""
-    }
-
-    if ($result.SimulatedSource) {
-        $lines += "  (Origen: datos simulados de laboratorio)"
-        $lines += ""
-    }
-
-    $lines += "Checks:"
-    foreach ($check in @($result.Checks)) {
-        switch ($check.Status) {
-            "Pass" { $icon = $checkIcon }
-            "Fail" { $icon = $failIcon }
-            "Info" { $icon = $infoIcon }
-            default { $icon = $warningIcon }
-        }
-        $lines += "  $icon [$($check.Status)] $($check.Name)"
-        $lines += "      $($check.Detail)"
-    }
-
-    $lines += ""
-    switch ($result.Status) {
-        "Pass" { $lines += "$checkIcon Estado general: Pass." }
-        "Warning" { $lines += "$warningIcon Estado general: Completado con advertencias." }
-        default { $lines += "$failIcon Estado general: Fail." }
-    }
-
-    if ($result.DegradedByMode) {
-        $lines += ""
-        $lines += "Modo informativo (laboratorio): este paso muestra advertencias en vez de bloquear. Cambie validationMode a 'enforcing' en el manifiesto de hardware para validar contra un servidor real."
-    }
-
-    if ($result.TestModeApplied) {
-        $lines += ""
-        $lines += "Modo pruebas activo: estado general forzado a Pass; los resultados por check reflejan la realidad."
-    }
-
-    return [pscustomobject]@{
-        Text = ($lines -join [Environment]::NewLine)
-        Result = $result
     }
 }
 
@@ -924,169 +207,174 @@ $xaml = @"
                                 TextWrapping="Wrap"
                                 Margin="0,40,0,40"
                                 Visibility="Collapsed" />
-                     <Border x:Name="HardwareStepCard"
-                            Background="#FFFFFF"
-                            BorderBrush="#E5E7EB"
-                            BorderThickness="1"
-                            CornerRadius="7"
-                            Padding="14"
-                            Margin="0,0,0,14">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="58" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="160" />
-                                <ColumnDefinition Width="110" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="01" FontSize="18" FontWeight="Bold" Foreground="#0078D4" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="1" Text="Validar hardware" FontSize="14" Foreground="#111827" VerticalAlignment="Center" />
-                            <TextBlock x:Name="HardwareStatusText" Grid.Column="2" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <Button x:Name="ExecuteHardwareButton" Grid.Column="3" Content="Ejecutar" Width="92" Height="32" HorizontalAlignment="Right" />
-                        </Grid>
-                    </Border>
 
-                    <Border x:Name="NetworkStepCard"
-                            Background="#FFFFFF"
-                            BorderBrush="#E5E7EB"
-                            BorderThickness="1"
-                            CornerRadius="7"
-                            Padding="14"
-                            Margin="0,0,0,14">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="58" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="160" />
-                                <ColumnDefinition Width="110" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="02" FontSize="18" FontWeight="Bold" Foreground="#0078D4" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="1" Text="Validar red" FontSize="14" Foreground="#111827" VerticalAlignment="Center" />
-                            <TextBlock x:Name="NetworkStatusText" Grid.Column="2" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <Button x:Name="ExecuteNetworkButton" Grid.Column="3" Content="Ejecutar" Width="92" Height="32" HorizontalAlignment="Right" />
-                        </Grid>
-                    </Border>
-
-                    <Border x:Name="OperatingSystemStepCard"
+                     <Border x:Name="SpecsStepCard"
                              Background="#FFFFFF"
                              BorderBrush="#E5E7EB"
                              BorderThickness="1"
                              CornerRadius="7"
                              Padding="14"
                              Margin="0,0,0,14">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="58" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="160" />
-                                <ColumnDefinition Width="110" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="03" FontSize="18" FontWeight="Bold" Foreground="#0078D4" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="1" Text="Validar sistema operativo" FontSize="14" Foreground="#111827" VerticalAlignment="Center" />
-                            <TextBlock x:Name="OperatingSystemStatusText" Grid.Column="2" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <Button x:Name="ExecuteOperatingSystemButton" Grid.Column="3" Content="Ejecutar" Width="92" Height="32" HorizontalAlignment="Right" />
-                        </Grid>
-                    </Border>
+                         <Grid>
+                             <Grid.ColumnDefinitions>
+                                 <ColumnDefinition Width="58" />
+                                 <ColumnDefinition Width="*" />
+                                 <ColumnDefinition Width="160" />
+                                 <ColumnDefinition Width="110" />
+                             </Grid.ColumnDefinitions>
+                             <TextBlock Text="01" FontSize="18" FontWeight="Bold" Foreground="#0078D4" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="1" Text="Validar especificaciones" FontSize="14" Foreground="#111827" VerticalAlignment="Center" />
+                             <TextBlock x:Name="SpecsStatusText" Grid.Column="2" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                             <Button x:Name="ExecuteSpecsButton" Grid.Column="3" Content="Ejecutar" Width="92" Height="32" HorizontalAlignment="Right" />
+                         </Grid>
+                     </Border>
 
-                    <Border x:Name="StorageStepCard"
+                     <Border x:Name="Step2Card"
                              Background="#FFFFFF"
                              BorderBrush="#E5E7EB"
                              BorderThickness="1"
                              CornerRadius="7"
                              Padding="14"
                              Margin="0,0,0,14">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="58" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="160" />
-                                <ColumnDefinition Width="110" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="04" FontSize="18" FontWeight="Bold" Foreground="#0078D4" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="1" Text="Validar almacenamiento" FontSize="14" Foreground="#111827" VerticalAlignment="Center" />
-                            <TextBlock x:Name="StorageStatusText" Grid.Column="2" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <Button x:Name="ExecuteStorageButton" Grid.Column="3" Content="Ejecutar" Width="92" Height="32" HorizontalAlignment="Right" />
-                        </Grid>
-                    </Border>
+                         <Grid>
+                             <Grid.ColumnDefinitions>
+                                 <ColumnDefinition Width="58" />
+                                 <ColumnDefinition Width="*" />
+                                 <ColumnDefinition Width="110" />
+                             </Grid.ColumnDefinitions>
+                             <TextBlock Text="02" FontSize="18" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="1" Text="Instalar prerrequisitos" FontSize="14" Foreground="#777777" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="2" Text="Próximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                         </Grid>
+                     </Border>
 
-                    <Border x:Name="SecurityStepCard"
+                     <Border x:Name="Step3Card"
                              Background="#FFFFFF"
                              BorderBrush="#E5E7EB"
                              BorderThickness="1"
                              CornerRadius="7"
                              Padding="14"
                              Margin="0,0,0,14">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="58" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="160" />
-                                <ColumnDefinition Width="110" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="05" FontSize="18" FontWeight="Bold" Foreground="#0078D4" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="1" Text="Validar seguridad" FontSize="14" Foreground="#111827" VerticalAlignment="Center" />
-                            <TextBlock x:Name="SecurityStatusText" Grid.Column="2" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <Button x:Name="ExecuteSecurityButton" Grid.Column="3" Content="Ejecutar" Width="92" Height="32" HorizontalAlignment="Right" />
-                        </Grid>
-                    </Border>
+                         <Grid>
+                             <Grid.ColumnDefinitions>
+                                 <ColumnDefinition Width="58" />
+                                 <ColumnDefinition Width="*" />
+                                 <ColumnDefinition Width="110" />
+                             </Grid.ColumnDefinitions>
+                             <TextBlock Text="03" FontSize="18" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="1" Text="Instalar software" FontSize="14" Foreground="#777777" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="2" Text="Próximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                         </Grid>
+                     </Border>
 
-                    <Border x:Name="BackupStepCard"
+                     <Border x:Name="Step4Card"
                              Background="#FFFFFF"
                              BorderBrush="#E5E7EB"
                              BorderThickness="1"
                              CornerRadius="7"
                              Padding="14"
                              Margin="0,0,0,14">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="58" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="160" />
-                                <ColumnDefinition Width="150" />
-                                <ColumnDefinition Width="110" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="06" FontSize="18" FontWeight="Bold" Foreground="#0078D4" VerticalAlignment="Center" />
-                            <TextBlock Grid.Column="1" Text="Preflight de Backup" FontSize="14" Foreground="#111827" VerticalAlignment="Center" />
-                            <ComboBox x:Name="BackupProfileCombo" Grid.Column="2" Width="140" Height="28" VerticalAlignment="Center" HorizontalAlignment="Left">
-                                <ComboBoxItem Content="SystemManager" IsSelected="True" />
-                                <ComboBoxItem Content="IPC_RIP" />
-                            </ComboBox>
-                            <TextBlock x:Name="BackupStatusText" Grid.Column="3" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
-                            <Button x:Name="ExecuteBackupButton" Grid.Column="4" Content="Ejecutar" Width="92" Height="32" HorizontalAlignment="Right" />
-                        </Grid>
-                    </Border>
+                         <Grid>
+                             <Grid.ColumnDefinitions>
+                                 <ColumnDefinition Width="58" />
+                                 <ColumnDefinition Width="*" />
+                                 <ColumnDefinition Width="110" />
+                             </Grid.ColumnDefinitions>
+                             <TextBlock Text="04" FontSize="18" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="1" Text="Backup en blanco" FontSize="14" Foreground="#777777" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="2" Text="Próximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                         </Grid>
+                     </Border>
 
-                    <TextBlock x:Name="ResultLabel" Text="Resultado" FontSize="14" FontWeight="SemiBold" Foreground="#374151" Margin="0,6,0,8" />
-                    <TextBox x:Name="ResultTextBox"
-                             MinHeight="320"
-                             FontFamily="Consolas"
-                             FontSize="13"
-                             Foreground="#111827"
+                     <Border x:Name="Step5Card"
                              Background="#FFFFFF"
-                             BorderBrush="#CBD5E1"
+                             BorderBrush="#E5E7EB"
                              BorderThickness="1"
-                             Padding="12"
-                             TextWrapping="Wrap"
-                             AcceptsReturn="True"
-                             VerticalScrollBarVisibility="Auto"
-                             IsReadOnly="True" />
-                </StackPanel>
-            </ScrollViewer>
+                             CornerRadius="7"
+                             Padding="14"
+                             Margin="0,0,0,14">
+                         <Grid>
+                             <Grid.ColumnDefinitions>
+                                 <ColumnDefinition Width="58" />
+                                 <ColumnDefinition Width="*" />
+                                 <ColumnDefinition Width="110" />
+                             </Grid.ColumnDefinitions>
+                             <TextBlock Text="05" FontSize="18" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="1" Text="Cargar licencia" FontSize="14" Foreground="#777777" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="2" Text="Próximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                         </Grid>
+                     </Border>
 
-            <Border Grid.Row="2" Background="White" Padding="24,16" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Margin="0,0,24,0">
-                        <TextBlock x:Name="ProgressLabel" Text="Progreso general: 0%" Foreground="#374151" FontWeight="SemiBold" Margin="0,0,0,6" />
-                        <ProgressBar x:Name="MainProgressBar" Height="16" Minimum="0" Maximum="100" Value="0" />
-                    </StackPanel>
-                    <Button x:Name="ReportButton" Grid.Column="1" Content="Generar Reporte" Width="160" Height="38" VerticalAlignment="Bottom" />
-                </Grid>
-            </Border>
-        </Grid>
-    </Grid>
+                     <Border x:Name="Step6Card"
+                             Background="#FFFFFF"
+                             BorderBrush="#E5E7EB"
+                             BorderThickness="1"
+                             CornerRadius="7"
+                             Padding="14"
+                             Margin="0,0,0,14">
+                         <Grid>
+                             <Grid.ColumnDefinitions>
+                                 <ColumnDefinition Width="58" />
+                                 <ColumnDefinition Width="*" />
+                                 <ColumnDefinition Width="110" />
+                             </Grid.ColumnDefinitions>
+                             <TextBlock Text="06" FontSize="18" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="1" Text="Pruebas" FontSize="14" Foreground="#777777" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="2" Text="Próximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                         </Grid>
+                     </Border>
+
+                     <Border x:Name="Step7Card"
+                             Background="#FFFFFF"
+                             BorderBrush="#E5E7EB"
+                             BorderThickness="1"
+                             CornerRadius="7"
+                             Padding="14"
+                             Margin="0,0,0,14">
+                         <Grid>
+                             <Grid.ColumnDefinitions>
+                                 <ColumnDefinition Width="58" />
+                                 <ColumnDefinition Width="*" />
+                                 <ColumnDefinition Width="110" />
+                             </Grid.ColumnDefinitions>
+                             <TextBlock Text="07" FontSize="18" FontWeight="Bold" Foreground="#888888" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="1" Text="Assessment final" FontSize="14" Foreground="#777777" VerticalAlignment="Center" />
+                             <TextBlock Grid.Column="2" Text="Próximamente" FontSize="13" FontWeight="SemiBold" Foreground="#888888" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                         </Grid>
+                     </Border>
+
+                     <TextBlock x:Name="ResultLabel" Text="Resultado" FontSize="14" FontWeight="SemiBold" Foreground="#374151" Margin="0,6,0,8" />
+                     <TextBox x:Name="ResultTextBox"
+                              MinHeight="320"
+                              FontFamily="Consolas"
+                              FontSize="13"
+                              Foreground="#111827"
+                              Background="#FFFFFF"
+                              BorderBrush="#CBD5E1"
+                              BorderThickness="1"
+                              Padding="12"
+                              TextWrapping="Wrap"
+                              AcceptsReturn="True"
+                              VerticalScrollBarVisibility="Auto"
+                              IsReadOnly="True" />
+                 </StackPanel>
+             </ScrollViewer>
+ 
+             <Border Grid.Row="2" Background="White" Padding="24,16" BorderBrush="#E5E7EB" BorderThickness="0,1,0,0">
+                 <Grid>
+                     <Grid.ColumnDefinitions>
+                         <ColumnDefinition Width="*" />
+                         <ColumnDefinition Width="Auto" />
+                     </Grid.ColumnDefinitions>
+                     <StackPanel Grid.Column="0" Margin="0,0,24,0">
+                         <TextBlock x:Name="ProgressLabel" Text="Progreso general: 0%" Foreground="#374151" FontWeight="SemiBold" Margin="0,0,0,6" />
+                         <ProgressBar x:Name="MainProgressBar" Height="16" Minimum="0" Maximum="100" Value="0" />
+                     </StackPanel>
+                     <Button x:Name="ReportButton" Grid.Column="1" Content="Generar Reporte" Width="160" Height="38" VerticalAlignment="Bottom" />
+                 </Grid>
+             </Border>
+         </Grid>
+     </Grid>
 </Window>
 "@
 
@@ -1098,25 +386,17 @@ $modelCombo = $window.FindName("ModelCombo")
 $versionCombo = $window.FindName("VersionCombo")
 $stepsNotAvailableText = $window.FindName("StepsNotAvailableText")
 $resultLabel = $window.FindName("ResultLabel")
-$hardwareStepCard = $window.FindName("HardwareStepCard")
-$networkStepCard = $window.FindName("NetworkStepCard")
-$operatingSystemStepCard = $window.FindName("OperatingSystemStepCard")
-$storageStepCard = $window.FindName("StorageStepCard")
-$securityStepCard = $window.FindName("SecurityStepCard")
-$backupStepCard = $window.FindName("BackupStepCard")
-$hardwareStatusText = $window.FindName("HardwareStatusText")
-$networkStatusText = $window.FindName("NetworkStatusText")
-$operatingSystemStatusText = $window.FindName("OperatingSystemStatusText")
-$storageStatusText = $window.FindName("StorageStatusText")
-$securityStatusText = $window.FindName("SecurityStatusText")
-$backupStatusText = $window.FindName("BackupStatusText")
-$executeHardwareButton = $window.FindName("ExecuteHardwareButton")
-$executeNetworkButton = $window.FindName("ExecuteNetworkButton")
-$executeOperatingSystemButton = $window.FindName("ExecuteOperatingSystemButton")
-$executeStorageButton = $window.FindName("ExecuteStorageButton")
-$executeSecurityButton = $window.FindName("ExecuteSecurityButton")
-$executeBackupButton = $window.FindName("ExecuteBackupButton")
-$backupProfileCombo = $window.FindName("BackupProfileCombo")
+
+$specsStepCard = $window.FindName("SpecsStepCard")
+$step2Card = $window.FindName("Step2Card")
+$step3Card = $window.FindName("Step3Card")
+$step4Card = $window.FindName("Step4Card")
+$step5Card = $window.FindName("Step5Card")
+$step6Card = $window.FindName("Step6Card")
+$step7Card = $window.FindName("Step7Card")
+
+$specsStatusText = $window.FindName("SpecsStatusText")
+$executeSpecsButton = $window.FindName("ExecuteSpecsButton")
 $resultTextBox = $window.FindName("ResultTextBox")
 $progressBar = $window.FindName("MainProgressBar")
 $progressLabel = $window.FindName("ProgressLabel")
@@ -1140,50 +420,17 @@ $shadow.Color = [Windows.Media.Color]::FromRgb(0, 0, 0)
 $shadow.BlurRadius = 12
 $shadow.ShadowDepth = 1
 $shadow.Opacity = 0.16
-$hardwareStepCard.Effect = $shadow
 
-$networkShadow = New-Object Windows.Media.Effects.DropShadowEffect
-$networkShadow.Color = [Windows.Media.Color]::FromRgb(0, 0, 0)
-$networkShadow.BlurRadius = 12
-$networkShadow.ShadowDepth = 1
-$networkShadow.Opacity = 0.16
-$networkStepCard.Effect = $networkShadow
-
-$operatingSystemShadow = New-Object Windows.Media.Effects.DropShadowEffect
-$operatingSystemShadow.Color = [Windows.Media.Color]::FromRgb(0, 0, 0)
-$operatingSystemShadow.BlurRadius = 12
-$operatingSystemShadow.ShadowDepth = 1
-$operatingSystemShadow.Opacity = 0.16
-$operatingSystemStepCard.Effect = $operatingSystemShadow
-
-$storageShadow = New-Object Windows.Media.Effects.DropShadowEffect
-$storageShadow.Color = [Windows.Media.Color]::FromRgb(0, 0, 0)
-$storageShadow.BlurRadius = 12
-$storageShadow.ShadowDepth = 1
-$storageShadow.Opacity = 0.16
-$storageStepCard.Effect = $storageShadow
-
-$securityShadow = New-Object Windows.Media.Effects.DropShadowEffect
-$securityShadow.Color = [Windows.Media.Color]::FromRgb(0, 0, 0)
-$securityShadow.BlurRadius = 12
-$securityShadow.ShadowDepth = 1
-$securityShadow.Opacity = 0.16
-$securityStepCard.Effect = $securityShadow
-
-$backupShadow = New-Object Windows.Media.Effects.DropShadowEffect
-$backupShadow.Color = [Windows.Media.Color]::FromRgb(0, 0, 0)
-$backupShadow.BlurRadius = 12
-$backupShadow.ShadowDepth = 1
-$backupShadow.Opacity = 0.16
-$backupStepCard.Effect = $backupShadow
+$specsStepCard.Effect = $shadow
+$step2Card.Effect = $shadow
+$step3Card.Effect = $shadow
+$step4Card.Effect = $shadow
+$step5Card.Effect = $shadow
+$step6Card.Effect = $shadow
+$step7Card.Effect = $shadow
 
 $script:stepStatuses = @{
-    Hardware = $session.HardwareStatus
-    Network = $session.NetworkStatus
-    OperatingSystem = $session.OperatingSystemStatus
-    Storage = $session.StorageStatus
-    Security = $session.SecurityStatus
-    Backup = $session.BackupStatus
+    Specs = $session.SpecsStatus
 }
 
 function Save-Session {
@@ -1191,12 +438,7 @@ function Save-Session {
         Product = [string]$productCombo.SelectedItem
         Model = [string]$modelCombo.SelectedItem
         Version = [string]$versionCombo.SelectedItem
-        HardwareStatus = $script:stepStatuses.Hardware
-        NetworkStatus = $script:stepStatuses.Network
-        OperatingSystemStatus = $script:stepStatuses.OperatingSystem
-        StorageStatus = $script:stepStatuses.Storage
-        SecurityStatus = $script:stepStatuses.Security
-        BackupStatus = $script:stepStatuses.Backup
+        SpecsStatus = $script:stepStatuses.Specs
         LastResult = $resultTextBox.Text
         SavedAt = (Get-Date).ToString("s")
     }
@@ -1205,12 +447,14 @@ function Save-Session {
 }
 
 function Update-Progress {
-    # Warning cuenta como paso completado (completado con advertencias).
-    $completed = @($script:stepStatuses.Values | Where-Object { $_ -eq "Completed" -or $_ -eq "Warning" }).Count
-    $totalSteps = $script:stepStatuses.Count
-    $percent = [math]::Round(($completed / $totalSteps) * 100, 0)
+    $completed = 0
+    if ($script:stepStatuses.Specs -eq "Completed" -or $script:stepStatuses.Specs -eq "Warning") {
+        $completed = 1
+    }
+    
+    $percent = [math]::Round(($completed / 7) * 100, 0)
     $progressBar.Value = $percent
-    $progressLabel.Text = "Progreso general: $percent% ($completed de $totalSteps pasos completados)"
+    $progressLabel.Text = "Progreso general: $percent% ($completed de 7 pasos completados)"
 }
 
 function Update-StepState {
@@ -1220,38 +464,11 @@ function Update-StepState {
     )
 
     $script:stepStatuses[$Step] = $Status
-
-    if ($Step -eq "Hardware") {
-        $statusText = $hardwareStatusText
-        $button = $executeHardwareButton
-    }
-    elseif ($Step -eq "OperatingSystem") {
-        $statusText = $operatingSystemStatusText
-        $button = $executeOperatingSystemButton
-    }
-    elseif ($Step -eq "Storage") {
-        $statusText = $storageStatusText
-        $button = $executeStorageButton
-    }
-    elseif ($Step -eq "Security") {
-        $statusText = $securityStatusText
-        $button = $executeSecurityButton
-    }
-    elseif ($Step -eq "Backup") {
-        $statusText = $backupStatusText
-        $button = $executeBackupButton
-    }
-    else {
-        $statusText = $networkStatusText
-        $button = $executeNetworkButton
-    }
+    $statusText = $specsStatusText
+    $button = $executeSpecsButton
 
     $statusText.Text = Get-StatusText -Status $Status
 
-    # El boton permanece visible tras completar el paso para poder RE-EJECUTAR y
-    # volver a mostrar su resultado (los pasos comparten un unico panel de
-    # resultado; sin esto no se podia revisar el Paso 1 tras correr el Paso 2).
-    # Solo se oculta/deshabilita mientras el paso esta en ejecucion.
     if ($Status -eq "Running") {
         $button.IsEnabled = $false
         $button.Content = "Ejecutar"
@@ -1302,44 +519,39 @@ function Update-VersionSteps {
         if ($script:selectedVersion.stepsAvailable) {
             $stepsNotAvailableText.Visibility = "Collapsed"
 
-            $hardwareStepCard.Visibility = "Visible"
-            $networkStepCard.Visibility = "Visible"
-            $operatingSystemStepCard.Visibility = "Visible"
-            $storageStepCard.Visibility = "Visible"
-            $securityStepCard.Visibility = "Visible"
-            $backupStepCard.Visibility = "Visible"
+            $specsStepCard.Visibility = "Visible"
+            $step2Card.Visibility = "Visible"
+            $step3Card.Visibility = "Visible"
+            $step4Card.Visibility = "Visible"
+            $step5Card.Visibility = "Visible"
+            $step6Card.Visibility = "Visible"
+            $step7Card.Visibility = "Visible"
             $resultLabel.Visibility = "Visible"
             $resultTextBox.Visibility = "Visible"
 
             $planSubtitle.Text = "$prodName - $modelName - Version $verName"
 
             if (-not $script:loadingSession) {
-                $script:stepStatuses.Hardware = "Pending"
-                $script:stepStatuses.Network = "Pending"
-                $script:stepStatuses.OperatingSystem = "Pending"
-                $script:stepStatuses.Storage = "Pending"
-                $script:stepStatuses.Security = "Pending"
-                $script:stepStatuses.Backup = "Pending"
+                $script:stepStatuses.Specs = "Pending"
                 $resultTextBox.Text = ""
+            } else {
+                # Cargar el resultado almacenado si se está restaurando
+                $resultTextBox.Text = $session.LastResult
             }
 
-            Update-StepState -Step "Hardware" -Status $script:stepStatuses.Hardware
-            Update-StepState -Step "Network" -Status $script:stepStatuses.Network
-            Update-StepState -Step "OperatingSystem" -Status $script:stepStatuses.OperatingSystem
-            Update-StepState -Step "Storage" -Status $script:stepStatuses.Storage
-            Update-StepState -Step "Security" -Status $script:stepStatuses.Security
-            Update-StepState -Step "Backup" -Status $script:stepStatuses.Backup
+            Update-StepState -Step "Specs" -Status $script:stepStatuses.Specs
         }
         else {
             $stepsNotAvailableText.Text = "Pasos no disponibles para $prodName $modelName $verName. Próximamente."
             $stepsNotAvailableText.Visibility = "Visible"
 
-            $hardwareStepCard.Visibility = "Collapsed"
-            $networkStepCard.Visibility = "Collapsed"
-            $operatingSystemStepCard.Visibility = "Collapsed"
-            $storageStepCard.Visibility = "Collapsed"
-            $securityStepCard.Visibility = "Collapsed"
-            $backupStepCard.Visibility = "Collapsed"
+            $specsStepCard.Visibility = "Collapsed"
+            $step2Card.Visibility = "Collapsed"
+            $step3Card.Visibility = "Collapsed"
+            $step4Card.Visibility = "Collapsed"
+            $step5Card.Visibility = "Collapsed"
+            $step6Card.Visibility = "Collapsed"
+            $step7Card.Visibility = "Collapsed"
             $resultLabel.Visibility = "Collapsed"
             $resultTextBox.Visibility = "Collapsed"
 
@@ -1407,15 +619,46 @@ function Update-VersionCombo {
     }
 }
 
-function Invoke-HardwareValidation {
-    Update-StepState -Step "Hardware" -Status "Running"
-    $resultTextBox.Text = "Ejecutando validacion de hardware..."
+function Get-ValidateSpecificationsScriptBlock {
+    [CmdletBinding()]
+    param()
 
-    $script:hardwareProduct = [string]$productCombo.SelectedItem
-    $script:hardwareVersion = [string]$versionCombo.SelectedItem
-    $script:hardwareManifestPath = $null
-    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.hardware) {
-        $script:hardwareManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.hardware
+    $localScript = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Validate-Specifications.ps1"
+    if (Test-Path -Path $localScript -PathType Leaf) {
+        return @{
+            Command = $localScript
+            IsFile = $true
+        }
+    }
+
+    $scriptUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/scripts/validation/Validate-Specifications.ps1?cacheBust=$([DateTime]::UtcNow.Ticks)"
+    $scriptContent = Invoke-RestMethod -Uri $scriptUrl -Headers @{
+        "Cache-Control" = "no-cache"
+        "Pragma" = "no-cache"
+    } -ErrorAction Stop
+
+    return @{
+        Command = [scriptblock]::Create($scriptContent)
+        IsFile = $false
+    }
+}
+
+function Invoke-SpecsValidation {
+    Update-StepState -Step "Specs" -Status "Running"
+    $resultTextBox.Text = "Ejecutando validacion de especificaciones..."
+
+    $script:specsProduct = [string]$productCombo.SelectedItem
+    $script:specsVersion = [string]$versionCombo.SelectedItem
+    $script:specsModel = [string]$modelCombo.SelectedItem
+
+    $manifestsObj = $script:selectedVersion.manifests
+    $script:specsManifestPaths = @{}
+    if ($null -ne $manifestsObj) {
+        foreach ($prop in $manifestsObj.PSObject.Properties) {
+            if ($prop.Value) {
+                $script:specsManifestPaths[$prop.Name] = Join-Path -Path $projectRoot -ChildPath $prop.Value
+            }
+        }
     }
 
     $timer = New-Object Windows.Threading.DispatcherTimer
@@ -1426,249 +669,28 @@ function Invoke-HardwareValidation {
         $timerSender.Stop()
 
         try {
-            $validation = Invoke-HardwareRequirementsValidation -Product $script:hardwareProduct -Version $script:hardwareVersion -ManifestPath $script:hardwareManifestPath
-            $resultTextBox.Text = $validation.Text
+            $validator = Get-ValidateSpecificationsScriptBlock
+            $res = & $validator.Command -Product $script:specsProduct -Version $script:specsVersion -Model $script:specsModel -ManifestPaths $script:specsManifestPaths
+            $resultTextBox.Text = $res.Text
 
-            switch ($validation.Result.Status) {
-                "Pass" { Update-StepState -Step "Hardware" -Status "Completed" }
-                "Warning" { Update-StepState -Step "Hardware" -Status "Warning" }
-                default { Update-StepState -Step "Hardware" -Status "Failed" }
+            switch ($res.Status) {
+                "Pass" { Update-StepState -Step "Specs" -Status "Completed" }
+                "Warning" { Update-StepState -Step "Specs" -Status "Warning" }
+                default { Update-StepState -Step "Specs" -Status "Failed" }
             }
         }
         catch {
-            $resultTextBox.Text = "Error al ejecutar la validacion de hardware:`r`n$($_.Exception.Message)"
-            Update-StepState -Step "Hardware" -Status "Failed"
+            $resultTextBox.Text = "Error al ejecutar la validacion de especificaciones:`r`n$($_.Exception.Message)"
+            Update-StepState -Step "Specs" -Status "Failed"
         }
 
         Save-Session
     })
     $timer.Start()
 }
-
-function Invoke-NetworkValidation {
-    Update-StepState -Step "Network" -Status "Running"
-    $resultTextBox.Text = "Ejecutando validacion de red..."
-
-    $script:networkManifestPath = $null
-    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.network) {
-        $script:networkManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.network
-    }
-    $script:networkAssessmentPath = $null
-    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.assessment) {
-        $script:networkAssessmentPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.assessment
-    }
-
-    $timer = New-Object Windows.Threading.DispatcherTimer
-    $timer.Interval = [TimeSpan]::FromMilliseconds(120)
-    $timer.Add_Tick({
-        param($timerSender, $timerArgs)
-
-        $timerSender.Stop()
-
-        try {
-            $validation = Invoke-NetworkRequirementsValidation -ManifestPath $script:networkManifestPath -AssessmentPath $script:networkAssessmentPath
-            $resultTextBox.Text = $validation.Text
-
-            switch ($validation.Result.Status) {
-                "Pass" { Update-StepState -Step "Network" -Status "Completed" }
-                "Warning" { Update-StepState -Step "Network" -Status "Warning" }
-                default { Update-StepState -Step "Network" -Status "Failed" }
-            }
-        }
-        catch {
-            $resultTextBox.Text = "Error al ejecutar la validacion de red:`r`n$($_.Exception.Message)"
-            Update-StepState -Step "Network" -Status "Failed"
-        }
-
-        Save-Session
-    })
-    $timer.Start()
-}
-
-function Invoke-OSValidation {
-    Update-StepState -Step "OperatingSystem" -Status "Running"
-    $resultTextBox.Text = "Ejecutando validacion de sistema operativo..."
-
-    $script:osProduct = [string]$productCombo.SelectedItem
-    $script:osVersion = [string]$versionCombo.SelectedItem
-    $script:osHardwareManifestPath = $null
-    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.hardware) {
-        $script:osHardwareManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.hardware
-    }
-    $script:osAssessmentPath = $null
-    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.assessment) {
-        $script:osAssessmentPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.assessment
-    }
-
-    $timer = New-Object Windows.Threading.DispatcherTimer
-    $timer.Interval = [TimeSpan]::FromMilliseconds(120)
-    $timer.Add_Tick({
-        param($timerSender, $timerArgs)
-
-        $timerSender.Stop()
-
-        try {
-            $validation = Invoke-OSRequirementsValidation -Product $script:osProduct -Version $script:osVersion -ManifestPath $script:osHardwareManifestPath -AssessmentPath $script:osAssessmentPath
-            $resultTextBox.Text = $validation.Text
-
-            switch ($validation.Result.Status) {
-                "Pass" { Update-StepState -Step "OperatingSystem" -Status "Completed" }
-                "Warning" { Update-StepState -Step "OperatingSystem" -Status "Warning" }
-                default { Update-StepState -Step "OperatingSystem" -Status "Failed" }
-            }
-        }
-        catch {
-            $resultTextBox.Text = "Error al ejecutar la validacion de sistema operativo:`r`n$($_.Exception.Message)"
-            Update-StepState -Step "OperatingSystem" -Status "Failed"
-        }
-
-        Save-Session
-    })
-    $timer.Start()
-}
-
-function Invoke-StorageValidation {
-    Update-StepState -Step "Storage" -Status "Running"
-    $resultTextBox.Text = "Ejecutando validacion de almacenamiento..."
-
-    $script:storageProduct = [string]$productCombo.SelectedItem
-    $script:storageVersion = [string]$versionCombo.SelectedItem
-    $script:storageManifestPath = $null
-    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.storage) {
-        $script:storageManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.storage
-    }
-    $script:storageAssessmentPath = $null
-    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.assessment) {
-        $script:storageAssessmentPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.assessment
-    }
-    $script:storageHardwareManifestPath = $null
-    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.hardware) {
-        $script:storageHardwareManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.hardware
-    }
-
-    $timer = New-Object Windows.Threading.DispatcherTimer
-    $timer.Interval = [TimeSpan]::FromMilliseconds(120)
-    $timer.Add_Tick({
-        param($timerSender, $timerArgs)
-
-        $timerSender.Stop()
-
-        try {
-            $validation = Invoke-StorageRequirementsValidation -Product $script:storageProduct -Version $script:storageVersion -Profile "SystemManager" -ManifestPath $script:storageManifestPath -AssessmentPath $script:storageAssessmentPath -HardwareManifestPath $script:storageHardwareManifestPath
-            $resultTextBox.Text = $validation.Text
-
-            switch ($validation.Result.Status) {
-                "Pass" { Update-StepState -Step "Storage" -Status "Completed" }
-                "Warning" { Update-StepState -Step "Storage" -Status "Warning" }
-                default { Update-StepState -Step "Storage" -Status "Failed" }
-            }
-        }
-        catch {
-            $resultTextBox.Text = "Error al ejecutar la validacion de almacenamiento:`r`n$($_.Exception.Message)"
-            Update-StepState -Step "Storage" -Status "Failed"
-        }
-
-        Save-Session
-    })
-    $timer.Start()
-}
-
-function Invoke-SecurityValidation {
-    Update-StepState -Step "Security" -Status "Running"
-    $resultTextBox.Text = "Ejecutando validacion de seguridad..."
-
-    $script:securityProduct = [string]$productCombo.SelectedItem
-    $script:securityVersion = [string]$versionCombo.SelectedItem
-    $script:securityManifestPath = $null
-    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.security) {
-        $script:securityManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.security
-    }
-    $script:securityAssessmentPath = $null
-    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.assessment) {
-        $script:securityAssessmentPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.assessment
-    }
-    $script:securityHardwareManifestPath = $null
-    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.hardware) {
-        $script:securityHardwareManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.hardware
-    }
-
-    $timer = New-Object Windows.Threading.DispatcherTimer
-    $timer.Interval = [TimeSpan]::FromMilliseconds(120)
-    $timer.Add_Tick({
-        param($timerSender, $timerArgs)
-
-        $timerSender.Stop()
-
-        try {
-            $validation = Invoke-SecurityRequirementsValidation -Product $script:securityProduct -Version $script:securityVersion -ManifestPath $script:securityManifestPath -AssessmentPath $script:securityAssessmentPath -HardwareManifestPath $script:securityHardwareManifestPath
-            $resultTextBox.Text = $validation.Text
-
-            switch ($validation.Result.Status) {
-                "Pass" { Update-StepState -Step "Security" -Status "Completed" }
-                "Warning" { Update-StepState -Step "Security" -Status "Warning" }
-                default { Update-StepState -Step "Security" -Status "Failed" }
-            }
-        }
-        catch {
-            $resultTextBox.Text = "Error al ejecutar la validacion de seguridad:`r`n$($_.Exception.Message)"
-            Update-StepState -Step "Security" -Status "Failed"
-        }
-
-        Save-Session
-    })
-    $timer.Start()
-}
-
-function Invoke-BackupValidation {
-    Update-StepState -Step "Backup" -Status "Running"
-    $resultTextBox.Text = "Ejecutando preflight de backup..."
-
-    $script:backupProduct = [string]$productCombo.SelectedItem
-    $script:backupVersion = [string]$versionCombo.SelectedItem
-    $selectedItem = $backupProfileCombo.SelectedItem
-    $script:backupProfile = "SystemManager"
-    if ($null -ne $selectedItem) {
-        $script:backupProfile = [string]$selectedItem.Content
-    }
-    $script:backupManifestPath = $null
-    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.backup) {
-        $script:backupManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.backup
-    }
-    $script:backupHardwareManifestPath = $null
-    if ($null -ne $script:selectedVersion -and $null -ne $script:selectedVersion.manifests.hardware) {
-        $script:backupHardwareManifestPath = Join-Path -Path $projectRoot -ChildPath $script:selectedVersion.manifests.hardware
-    }
-
-    $timer = New-Object Windows.Threading.DispatcherTimer
-    $timer.Interval = [TimeSpan]::FromMilliseconds(120)
-    $timer.Add_Tick({
-        param($timerSender, $timerArgs)
-
-        $timerSender.Stop()
-
-        try {
-            $validation = Invoke-PreflightBackupValidation -Product $script:backupProduct -Version $script:backupVersion -Profile $script:backupProfile -ManifestPath $script:backupManifestPath -HardwareManifestPath $script:backupHardwareManifestPath
-            $resultTextBox.Text = $validation.Text
-
-            switch ($validation.Result.Status) {
-                "Pass" { Update-StepState -Step "Backup" -Status "Completed" }
-                "Warning" { Update-StepState -Step "Backup" -Status "Warning" }
-                default { Update-StepState -Step "Backup" -Status "Failed" }
-            }
-        }
-        catch {
-            $resultTextBox.Text = "Error al ejecutar el preflight de backup:`r`n$($_.Exception.Message)"
-            Update-StepState -Step "Backup" -Status "Failed"
-        }
-
-        Save-Session
-    })
-    $timer.Start()
-}
-
 
 function Show-Report {
-    $message = "Reporte DFE-Toolkit`n`nProducto: $($productCombo.SelectedItem)`nModelo: $($modelCombo.SelectedItem)`nVersion: $($versionCombo.SelectedItem)`nPaso 01 - Validar hardware: $(Get-StatusText -Status $script:stepStatuses.Hardware)`nPaso 02 - Validar red: $(Get-StatusText -Status $script:stepStatuses.Network)`nPaso 03 - Validar sistema operativo: $(Get-StatusText -Status $script:stepStatuses.OperatingSystem)`nPaso 04 - Validar almacenamiento: $(Get-StatusText -Status $script:stepStatuses.Storage)`nPaso 05 - Validar seguridad: $(Get-StatusText -Status $script:stepStatuses.Security)`nPaso 06 - Preflight de backup: $(Get-StatusText -Status $script:stepStatuses.Backup)"
+    $message = "Reporte DFE-Toolkit`n`nProducto: $($productCombo.SelectedItem)`nModelo: $($modelCombo.SelectedItem)`nVersion: $($versionCombo.SelectedItem)`nPaso 01 - Validar especificaciones: $(Get-StatusText -Status $script:stepStatuses.Specs)"
     [Windows.MessageBox]::Show($message, "Reporte DFE-Toolkit", "OK", "Information") | Out-Null
 }
 
@@ -1702,28 +724,8 @@ $versionCombo.Add_SelectionChanged({
     Update-VersionSteps
 })
 
-$executeHardwareButton.Add_Click({
-    Invoke-HardwareValidation
-})
-
-$executeNetworkButton.Add_Click({
-    Invoke-NetworkValidation
-})
-
-$executeOperatingSystemButton.Add_Click({
-    Invoke-OSValidation
-})
-
-$executeStorageButton.Add_Click({
-    Invoke-StorageValidation
-})
-
-$executeSecurityButton.Add_Click({
-    Invoke-SecurityValidation
-})
-
-$executeBackupButton.Add_Click({
-    Invoke-BackupValidation
+$executeSpecsButton.Add_Click({
+    Invoke-SpecsValidation
 })
 
 $reportButton.Add_Click({

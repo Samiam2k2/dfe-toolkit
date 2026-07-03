@@ -24,11 +24,11 @@ else {
     $testsRoot = (Get-Location).Path
 }
 
-$projectRoot = Split-Path -Parent $testsRoot
-$validatorPath = Join-Path -Path $projectRoot -ChildPath "scripts\validation\Preflight-Backup.ps1"
+$projectRoot = Split-Path -Parent (Split-Path -Parent $testsRoot)
+$validatorPath = Join-Path -Path $testsRoot -ChildPath "Preflight-Backup.ps1"
 $manifestPath = Join-Path -Path $projectRoot -ChildPath "manifests\production-pro\8.3\backup.json"
 $hardwareManifestPath = Join-Path -Path $projectRoot -ChildPath "manifests\production-pro\8.3\hardware.json"
-$fixturesRoot = Join-Path -Path $testsRoot -ChildPath "fixtures\backup"
+$fixturesRoot = Join-Path -Path $testsRoot -ChildPath "fixtures"
 
 if (-not (Test-Path -Path $validatorPath -PathType Leaf)) {
     Write-Host "No se encontro el validador en: $validatorPath" -ForegroundColor Red

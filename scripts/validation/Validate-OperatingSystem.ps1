@@ -253,40 +253,46 @@ $checks = @()
 # --- check-operating-system-version ---
 $osVersionMeta = Get-CheckMeta -Assessment $assessment -Id "check-operating-system-version"
 
-if ($modelMatchedRules.Count -eq 0) {
-    # El modelo no corresponde a ninguna configuracion conocida.
-    # Extraemos todos los patrones de SO de todas las reglas del manifiesto.
-    $generalOsPatterns = @()
-    foreach ($rule in @($productRules.rules.newInstallation.allowedHardware) + @($productRules.rules.upgrade.allowedHardware)) {
-        foreach ($pattern in @($rule.requiredOperatingSystemPatterns)) {
-            if ($generalOsPatterns -notcontains $pattern) {
-                $generalOsPatterns += $pattern
-            }
+# Extraemos todos los patrones de SO de todas las reglas del manifiesto.
+$generalOsPatterns = @()
+$allRules = @($productRules.rules.newInstallation.allowedHardware) + @($productRules.rules.upgrade.allowedHardware)
+foreach ($rule in $allRules) {
+    foreach ($pattern in @($rule.requiredOperatingSystemPatterns)) {
+        if ($generalOsPatterns -notcontains $pattern) {
+            $generalOsPatterns += $pattern
         }
-    }
-
-    if (Test-PatternList -Value $osCaption -Patterns $generalOsPatterns) {
-        $checks += New-CheckResult -Meta $osVersionMeta -Status "Warning" -Detail "El modelo '${model}' no está en la lista de hardware aprobado (valide Paso 1), pero el SO detectado '${osCaption}' es válido para Production Pro en general."
-    }
-    else {
-        $checks += New-CheckResult -Meta $osVersionMeta -Status "Fail" -Detail "El modelo '${model}' no está en la lista de hardware aprobado (valide Paso 1), y el SO detectado '${osCaption}' no es un SO válido para Production Pro (se esperaba Windows 10 o Windows Server 2019)."
     }
 }
-else {
-    $approvedOsPatterns = @()
-    foreach ($rule in $modelMatchedRules) {
-        foreach ($pattern in @($rule.requiredOperatingSystemPatterns)) {
-            if ($approvedOsPatterns -notcontains $pattern) {
-                $approvedOsPatterns += $pattern
-            }
-        }
-    }
 
-    if (Test-PatternList -Value $osCaption -Patterns $approvedOsPatterns) {
-        $checks += New-CheckResult -Meta $osVersionMeta -Status "Pass" -Detail "SO detectado: '$osCaption'. Aprobado para el modelo '$model' (esperado: $($approvedOsPatterns -join ', '))."
+$isGeneralValidOS = Test-PatternList -Value $osCaption -Patterns $generalOsPatterns
+
+if (-not $isGeneralValidOS) {
+    # PASO A: SO no válido para Production Pro en general
+    $checks += New-CheckResult -Meta $osVersionMeta -Status "Fail" -Detail "SO detectado '${osCaption}' no es válido para Production Pro (se esperaba Windows 10 o Windows Server 2019)."
+}
+else {
+    # PASO B: El SO es válido en general, evaluar el modelo del servidor
+    if ($modelMatchedRules.Count -eq 0) {
+        # Modelo NO reconocido
+        $checks += New-CheckResult -Meta $osVersionMeta -Status "Pass" -Detail "SO '${osCaption}' válido para Production Pro. El modelo '${model}' no está en la lista de hardware aprobado; la compatibilidad modelo↔SO se verificará en el Paso 1 de hardware."
     }
     else {
-        $checks += New-CheckResult -Meta $osVersionMeta -Status "Fail" -Detail "SO detectado: '$osCaption'. No esta entre los SO aprobados para el modelo '$model' (esperado: $($approvedOsPatterns -join ', '))."
+        # Modelo SÍ reconocido, validar combinación específica
+        $approvedOsPatterns = @()
+        foreach ($rule in $modelMatchedRules) {
+            foreach ($pattern in @($rule.requiredOperatingSystemPatterns)) {
+                if ($approvedOsPatterns -notcontains $pattern) {
+                    $approvedOsPatterns += $pattern
+                }
+            }
+        }
+
+        if (Test-PatternList -Value $osCaption -Patterns $approvedOsPatterns) {
+            $checks += New-CheckResult -Meta $osVersionMeta -Status "Pass" -Detail "SO '${osCaption}' aprobado para el modelo '${model}'."
+        }
+        else {
+            $checks += New-CheckResult -Meta $osVersionMeta -Status "Fail" -Detail "SO '${osCaption}' no es el SO aprobado para el modelo '${model}' (se esperaba $($approvedOsPatterns -join ', '))."
+        }
     }
 }
 

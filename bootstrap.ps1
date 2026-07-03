@@ -1,34 +1,24 @@
-param(
-    [switch]$NoGUI
-)
-
 Write-Host "🚀 DFE-Toolkit v0.1" -ForegroundColor Cyan
 Write-Host "==============================================" -ForegroundColor Gray
-Write-Host "📥 Descargando el motor principal..." -ForegroundColor Cyan
+Write-Host "📥 Descargando la interfaz gráfica (GUI)..." -ForegroundColor Cyan
 
-$mainScriptBaseUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/src/Main.ps1"
+$guiScriptBaseUrl = "https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/src/Gui.ps1"
 $cacheBust = [DateTime]::UtcNow.Ticks
-$mainScriptUrl = "$mainScriptBaseUrl`?cacheBust=$cacheBust"
+$guiScriptUrl = "$guiScriptBaseUrl`?cacheBust=$cacheBust"
 $headers = @{
     "Cache-Control" = "no-cache"
     "Pragma" = "no-cache"
 }
 
 try {
-    $scriptContent = Invoke-RestMethod -Uri $mainScriptUrl -Headers $headers -ErrorAction Stop
-    Write-Host "✅ Script descargado correctamente" -ForegroundColor Green
+    $scriptContent = Invoke-RestMethod -Uri $guiScriptUrl -Headers $headers -ErrorAction Stop
+    Write-Host "✅ Interfaz gráfica descargada correctamente" -ForegroundColor Green
 }
 catch {
-    Write-Error "❌ Error al descargar el script: $_"
+    Write-Error "❌ Error al descargar la interfaz gráfica: $_"
     exit 1
 }
 
-Write-Host "▶️  Ejecutando el motor principal..." -ForegroundColor Cyan
-$mainScriptBlock = [scriptblock]::Create($scriptContent)
-
-if ($NoGUI) {
-    & $mainScriptBlock -NoGUI
-}
-else {
-    & $mainScriptBlock
-}
+Write-Host "▶️  Ejecutando la interfaz gráfica..." -ForegroundColor Cyan
+$guiScriptBlock = [scriptblock]::Create($scriptContent)
+& $guiScriptBlock

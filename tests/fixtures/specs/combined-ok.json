@@ -1,0 +1,69 @@
+{
+  "description": "Configuracion combinada totalmente valida: HP Z8 G5, Windows 10 64-bit, 128 GB Memoria, adaptadores de red correctos, unidades C/S con espacio, privilegios de administrador y UAC activo.",
+  "expectedStatus": "Warning",
+  "manufacturer": "HP",
+  "model": "HP Z8 Fury G5 Workstation Desktop PC",
+  "osCaption": "Microsoft Windows 10 Enterprise",
+  "osArchitecture": "64-bit",
+  "osVersion": "10.0.19045",
+  "memoryGB": 128,
+  "cpuSockets": 1,
+  "cpuCores": 24,
+  "cpuName": "Intel(R) Xeon(R) w7-3465X",
+  "adapters": [
+    {
+      "name": "DataLAN",
+      "status": "Up",
+      "dhcp": "Disabled",
+      "interfaceMetric": 40,
+      "ipv4Addresses": [ "172.16.216.111" ]
+    },
+    {
+      "name": "External LAN",
+      "status": "Up",
+      "dhcp": "Disabled",
+      "interfaceMetric": 5,
+      "ipv4Addresses": [ "192.168.1.42" ]
+    },
+    {
+      "name": "Internal LAN",
+      "status": "Up",
+      "dhcp": "Disabled",
+      "interfaceMetric": 40,
+      "ipv4Addresses": [ "192.168.101.2" ]
+    }
+  ],
+  "hostsContent": "# Copyright (c) 1993-2009 Microsoft Corp.\n127.0.0.1       localhost\n",
+  "drives": [
+    {
+      "letter": "C",
+      "sizeGB": 250,
+      "freeGB": 120,
+      "exists": true
+    },
+    {
+      "letter": "S",
+      "sizeGB": 1000,
+      "freeGB": 800,
+      "exists": true
+    }
+  ],
+  "backupPathExists": true,
+  "backupPathWritable": true,
+  "isAdmin": true,
+  "uacEnabled": true,
+  "firewallProfiles": [
+    {
+      "name": "Domain",
+      "enabled": true
+    },
+    {
+      "name": "Private",
+      "enabled": true
+    },
+    {
+      "name": "Public",
+      "enabled": true
+    }
+  ]
+}

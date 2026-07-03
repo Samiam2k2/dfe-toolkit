@@ -1,6 +1,6 @@
 {
-  "description": "Maquina virtual VMware (modelo desconocido). check-operating-system-version da Warning porque el modelo es desconocido pero el SO (Windows Server 2019) es valido en general para Production Pro. Status general Warning (en enforcing tambien Warning).",
-  "expectedStatus": "Warning",
+  "description": "Maquina virtual VMware (modelo desconocido) pero con un SO valido para Production Pro (Windows Server 2019). check-operating-system-version da Pass porque el SO es valido y el modelo desconocido no falla el paso. La arquitectura es de 64 bits. Status general Pass.",
+  "expectedStatus": "Pass",
   "manufacturer": "VMware, Inc.",
   "model": "VMware Virtual Platform",
   "osCaption": "Microsoft Windows Server 2019 Standard",

@@ -1,6 +1,6 @@
 # DFE Toolkit
 
-Herramienta local en PowerShell para validaciones basicas orientadas a servidores DFE HP Indigo en Windows.
+Herramienta local en PowerShell para validaciones básicas orientadas a servidores DFE HP Indigo en Windows.
 
 ## Requisitos
 
@@ -12,267 +12,131 @@ Herramienta local en PowerShell para validaciones basicas orientadas a servidore
 
 ```text
 dfe-toolkit/
-├── bootstrap.ps1
+├── bootstrap.ps1                     # Descarga y lanza la interfaz gráfica
 ├── src/
-│   ├── Main.ps1
-│   └── Gui.ps1
+│   └── Gui.ps1                       # Interfaz gráfica WPF
 ├── scripts/
 │   └── validation/
+│       ├── Validate-Specifications.ps1 # Orquestador principal de especificaciones
 │       ├── Validate-Hardware.ps1
 │       ├── Validate-Network.ps1
 │       ├── Validate-OperatingSystem.ps1
 │       ├── Validate-Storage.ps1
-│       ├── Validate-Security.ps1
-│       └── Preflight-Backup.ps1
+│       └── Validate-Security.ps1
+├── utilities/
+│   └── backup/                       # Utilidades externas (Preflight de backup)
+│       ├── Preflight-Backup.ps1
+│       ├── Test-PreflightBackup.ps1
+│       ├── README.md
+│       └── fixtures/
 ├── tests/
+│   ├── Test-ValidateSpecifications.ps1 # Pruebas del orquestador consolidado
 │   ├── Test-ValidateHardware.ps1
 │   ├── Test-ValidateNetwork.ps1
 │   ├── Test-ValidateOperatingSystem.ps1
 │   ├── Test-ValidateStorage.ps1
 │   ├── Test-ValidateSecurity.ps1
-│   ├── Test-PreflightBackup.ps1
-│   └── fixtures/
-│       ├── z8-g5-win10.json
-│       ├── proliant-gen10-ws2019.json
-│       ├── z840-win10.json
-│       ├── dell-incompatible.json
-│       ├── network/
-│       │   ├── net-completa.json
-│       │   ├── net-mala-config.json
-│       │   └── net-sin-adaptadores.json
-│       ├── os/
-│       │   ├── os-ws2019-proliant.json
-│       │   ├── os-win10-z8.json
-│       │   ├── os-wrong-os.json
-│       │   ├── os-32bit.json
-│       │   └── os-unknown-model.json
-│       ├── storage/
-│       │   ├── storage-ok.json
-│       │   ├── storage-no-s.json
-│       │   └── storage-s-readonly.json
-│       ├── security/
-│       │   ├── security-admin.json
-│       │   ├── security-no-admin.json
-│       │   └── security-uac-off.json
-│       ├── backup/
-│       │   ├── backup-sm-ok.json
-│       │   ├── backup-sm-missing.json
-│       │   ├── backup-ipc-ok.json
-│       │   └── backup-ipc-missing.json
-│       └── manifests/
-│           ├── hardware-requirements-enforcing.json
-│           └── storage-requirements-enforcing.json
+│   └── fixtures/                     # Fixtures simuladas por módulo
 ├── config/
-│   └── settings.json
-├── manifests/
-│   ├── assessment-checks.json
-│   ├── hardware-requirements.json
-│   ├── network-requirements.json
-│   ├── storage-requirements.json
-│   ├── security-requirements.json
-│   └── backup-manifest.json
-├── logs/
+│   └── session.json                  # Sesión de ejecución actual de la GUI
+├── manifests/                        # Requisitos definidos por producto/versión
+│   ├── catalog.json
+│   ├── production-pro/
+│   │   └── 8.3/
+│   │       ├── hardware.json
+│   │       ├── network.json
+│   │       ├── storage.json
+│   │       ├── security.json
+│   │       ├── backup.json
+│   │       └── assessment-checks.json
+│   └── composer/
+│       └── 10.1/
+│           └── placeholder.json
 └── README.md
 ```
 
-## Uso remoto
+---
 
-Comando principal, abre la GUI WPF por defecto:
+## Uso Remoto (Lanzamiento Directo)
+
+Para descargar y abrir la interfaz gráfica (GUI) WPF directamente desde GitHub:
 
 ```powershell
 irm https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/bootstrap.ps1 | iex
 ```
 
-Comando alternativo para abrir el menu de texto:
+---
 
-```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Samiam2k2/dfe-toolkit/main/bootstrap.ps1))) -NoGUI
-```
+## Uso Local
 
-> Nota: PowerShell no permite pasar `-NoGUI` directamente a `iex` con `irm ... | iex -NoGUI`; ese switch se interpreta como parametro de `Invoke-Expression`, no del script descargado.
-
-## Uso local
-
-Desde la carpeta del proyecto, GUI por defecto:
+Desde la carpeta del proyecto clonado localmente, puede iniciar la GUI ejecutando:
 
 ```powershell
 .\bootstrap.ps1
 ```
 
-Menu de texto:
-
-```powershell
-.\bootstrap.ps1 -NoGUI
-```
-
-El menu de texto incluye estas opciones:
-
-1. Validar Hardware
-2. Validar Red
-3. Validar Sistema Operativo
-4. Validar Almacenamiento
-5. Validar Seguridad
-6. Preflight de Backup
-7. Salir
-8. Ver resumen de instalacion
-9. Abrir interfaz grafica
-
-## GUI WPF
-
-La interfaz grafica esta disponible en `src/Gui.ps1` y requiere Windows PowerShell con WPF.
-
-Ejecutar directamente:
+O directamente ejecutando el script de la GUI:
 
 ```powershell
 .\src\Gui.ps1
 ```
 
-Tambien se puede abrir desde el menu principal con la opcion `9. Abrir interfaz grafica`.
+---
 
-La GUI permite seleccionar producto, modelo y version, cargar los pasos `01. Validar hardware`, `02. Validar red`, `03. Validar sistema operativo`, `04. Validar almacenamiento`, `05. Validar seguridad` y `06. Preflight de backup` y ver los resultados en pantalla. Al cerrar, guarda el estado de la sesion en `config/session.json`. Cada paso comparte un unico panel de resultado; el boton de cada paso queda como `Ver / Repetir` tras completarse para poder volver a ejecutarlo y mostrar de nuevo su resultado.
+## GUI WPF
 
-Los pasos `01. Validar hardware`, `02. Validar red`, `03. Validar sistema operativo`, `04. Validar almacenamiento`, `05. Validar seguridad` y `06. Preflight de backup` delegan en `scripts/validation/Validate-Hardware.ps1`, `scripts/validation/Validate-Network.ps1`, `scripts/validation/Validate-OperatingSystem.ps1`, `scripts/validation/Validate-Storage.ps1`, `scripts/validation/Validate-Security.ps1` y `scripts/validation/Preflight-Backup.ps1` respectivamente (local si existe, si no se descarga de GitHub con cache-bust). El estado del paso refleja el `Status` real devuelto por el validador: `Pass` -> `Completado`, `Warning` -> `Completado con advertencias` (cuenta como completado en la barra de progreso), `Fail` -> `Fallido`. El modo pruebas ya no es el comportamiento por defecto y solo se aplica si la GUI pasa `-TestMode`.
+La interfaz gráfica permite seleccionar dinámicamente el Producto, Modelo y Versión desde un catálogo centralizado (`catalog.json`). La interfaz se compone de los siguientes pasos:
 
-El archivo `manifests/assessment-checks.json` contiene el manifiesto inicial de verificaciones DFE Assessment para Production Pro Commercial 8.3, organizado por categoria.
+1. **Paso 01 — Validar especificaciones**: Llama al script orquestador consolidado para validar el hardware, la red, el sistema operativo, el almacenamiento y la seguridad en un único paso interactivo, mostrando un checklist detallado en el panel.
+2. **Pasos 02 a 07**: Tarjetas placeholder de instalación y pruebas adicionales en desarrollo para futuras versiones ("Próximamente").
 
-## Validacion de hardware
+Al cerrar, guarda el estado de la sesión en `config/session.json` de forma que los resultados persistan al reabrir la aplicación.
 
-`scripts/validation/Validate-Hardware.ps1` es un script independiente (Windows PowerShell 5.1, sin dependencias) que ejecuta los 5 checks de categoria `hardware` de `manifests/assessment-checks.json`: `check-hardware-model`, `check-hardware-manufacturer`, `check-hardware-generation`, `check-memory-capacity` y `check-cpu-inventory`. Devuelve al pipeline un objeto con el `Status` general y el detalle por check (`Id`, `Name`, `Status`, `Detail`, `Blocking`).
+---
 
-Contra el sistema real:
+## Validación de Especificaciones (`Validate-Specifications.ps1`)
+
+El script `scripts/validation/Validate-Specifications.ps1` coordina secuencialmente la ejecución de los 5 validadores específicos del DFE:
+
+- **Validate-Hardware.ps1**: Modelo de servidor, fabricante, generación, memoria física y procesadores.
+- **Validate-Network.ps1**: Nombres de adaptadores (DataLAN, External LAN, Internal LAN), estado de red, IP estática, métricas de red y archivo hosts.
+- **Validate-OperatingSystem.ps1**: Validación del sistema operativo y baseline de build.
+- **Validate-Storage.ps1**: Espacio libre por unidad de disco, unidades y layout esperado.
+- **Validate-Security.ps1**: Privilegios de administrador del toolkit, configuración de UAC y estado del Firewall.
+
+Consolida todos los checks en un único objeto de salida estructurado y genera un checklist en formato de texto plano (disponible en la propiedad `.Text` del resultado).
+
+### Ejecución Manual del Orquestador:
 
 ```powershell
-.\scripts\validation\Validate-Hardware.ps1 -Product "Production Pro" -Version "8.3"
+$manifests = @{
+    hardware = "manifests/production-pro/8.3/hardware.json"
+    network = "manifests/production-pro/8.3/network.json"
+    storage = "manifests/production-pro/8.3/storage.json"
+    security = "manifests/production-pro/8.3/security.json"
+    assessment = "manifests/production-pro/8.3/assessment-checks.json"
+}
+
+.\scripts\validation\Validate-Specifications.ps1 -Product "Production Pro" -Version "8.3" -Model "commercial" -ManifestPaths $manifests
 ```
 
-Contra un JSON de sistema simulado (pruebas en laboratorio/VM):
+---
+
+## Pruebas de Software
+
+El toolkit contiene suites de pruebas automatizadas que ejecutan los validadores contra fixtures JSON de sistema simulado para comprobar aserciones de código:
 
 ```powershell
-.\scripts\validation\Validate-Hardware.ps1 -SystemInfoPath .\tests\fixtures\z8-g5-win10.json
-```
+# Pruebas del orquestador consolidado
+.\tests\Test-ValidateSpecifications.ps1
 
-Los minimos de memoria y CPU se leen del bloque `minimumResources` de `manifests/hardware-requirements.json`. Esos valores son placeholder (marcados con `TODO: confirmar contra guia TS1ES-00016`) y deben ajustarse con las cifras oficiales del System Guide antes de promoverse a stable.
-
-### Modo de validacion (`validationMode`)
-
-El campo `validationMode` en la raiz de `manifests/hardware-requirements.json` controla como se calcula el `Status` GENERAL del paso (no cambia la severidad real de cada check, que siempre se muestra tal cual):
-
-- `informational` (valor actual): si algun check bloqueante da `Fail`, el `Status` general se degrada a `Warning` en vez de `Fail`. Pensado para laboratorio/VM sin un servidor DFE real. El objeto de salida incluye `DegradedByMode = $true` y `RealStatus` conserva el `Fail` sin degradar para dejar el rastro honesto.
-- `enforcing`: respeta el `blocking` real de cada check y bloquea con `Fail`. Pensado para validar contra un servidor de produccion.
-
-Es una palanca distinta de `-TestMode`, que fuerza el `Status` a `Pass` (`TestModeApplied = $true`). El orden de aplicacion es: `RealStatus` (enforcing) -> degradacion por `validationMode` -> `-TestMode`. Si el campo no existe en el manifiesto, el default es `enforcing` (no cambia el comportamiento de manifiestos viejos).
-
-## Validacion de red
-
-`scripts/validation/Validate-Network.ps1` es un script independiente (Windows PowerShell 5.1, sin dependencias) que ejecuta los 5 checks de categoria `network` de `manifests/assessment-checks.json`: `check-network-adapter-names`, `check-network-adapter-state`, `check-network-static-ip`, `check-network-metrics` y `check-hosts-file`. Devuelve al pipeline un objeto con la misma forma que el validador de hardware (`Status`, `RealStatus`, `TestModeApplied`, `Checks`), mas un inventario de adaptadores (`Adapters`) y `SimulatedSource`.
-
-Los adaptadores esperados y sus metricas se leen de `manifests/network-requirements.json`; el `name` y el flag `blocking` de cada check se leen de `manifests/assessment-checks.json` (hoy los 5 son `blocking:false`, por lo que el paso es informativo y nunca da `Fail`). El check `check-hosts-file` da `Warning` mientras `requiredEntries` este vacio.
-
-Contra el sistema real:
-
-```powershell
-.\scripts\validation\Validate-Network.ps1
-```
-
-Contra un JSON de red simulada (pruebas en laboratorio/VM):
-
-```powershell
-.\scripts\validation\Validate-Network.ps1 -SystemInfoPath .\tests\fixtures\network\net-completa.json
-```
-
-## Validacion de sistema operativo
-
-`scripts/validation/Validate-OperatingSystem.ps1` es un script independiente (Windows PowerShell 5.1, sin dependencias) que ejecuta 2 de los 4 checks de categoria `operating-system` de `manifests/assessment-checks.json` (`check-operating-system-version` y `check-os-architecture`) mas `check-os-build` como check informativo. NO incluye `check-pending-reboot` (se hara en un paso posterior de pre-instalacion). Devuelve un objeto con la misma forma que los otros validadores (`Status`, `RealStatus`, `ValidationMode`, `DegradedByMode`, `TestModeApplied`, `Checks`) mas `OSArchitecture`.
-
-El SO valido depende del hardware: no hay un manifiesto de SO propio. Se reutiliza la matriz de compatibilidad de `manifests/hardware-requirements.json`, donde cada regla ya trae `requiredOperatingSystemPatterns`. El Paso 3 resuelve que reglas coinciden con el modelo detectado y valida el SO contra los patrones de SO de esas reglas. Si el modelo no corresponde a ninguna configuracion conocida, `check-operating-system-version` da `Warning` y remite al Paso 1 (no duplica la incompatibilidad de hardware como `Fail`).
-
-`check-os-build` es informativo por ahora: se lee el bloque raiz `osBuildBaseline` de `manifests/hardware-requirements.json`; mientras `approvedBuilds` este vacio, el check queda como informativo (neutro para el estado general) y solo registra el build detectado. El validador aplica el mismo `validationMode` (informational/enforcing) y `-TestMode` que el de hardware.
-
-Contra el sistema real:
-
-```powershell
-.\scripts\validation\Validate-OperatingSystem.ps1 -Product "Production Pro" -Version "8.3"
-```
-
-Contra un JSON de sistema simulado (pruebas en laboratorio/VM):
-
-```powershell
-.\scripts\validation\Validate-OperatingSystem.ps1 -SystemInfoPath .\tests\fixtures\os\os-win10-z8.json
-```
-
-## Validacion de almacenamiento
-
-`scripts/validation/Validate-Storage.ps1` es un script independiente (Windows PowerShell 5.1, sin dependencias) que ejecuta los 3 checks de categoria `storage` de `manifests/assessment-checks.json`: `check-storage-free-space`, `check-storage-drive-layout` y `check-storage-backup-location`. Devuelve al pipeline un objeto con la misma forma que los otros validadores (`Status`, `RealStatus`, `ValidationMode`, `DegradedByMode`, `TestModeApplied`, `Checks`) mas un inventario de unidades (`Drives`) y `SimulatedSource`.
-
-Las unidades esperadas y la ruta de backup segun el perfil (`SystemManager` o `IPC_RIP`) se leen de `manifests/storage-requirements.json`. El check de espacio libre es bloqueante y reporta advertencia si no hay limites definidos. El check de backup location realiza una comprobacion de escritura real de archivos si la ruta existe.
-
-El validador aplica el mismo `validationMode` (informational/enforcing) leido de `hardware-requirements.json` y `-TestMode`.
-
-Contra el sistema real:
-
-```powershell
-.\scripts\validation\Validate-Storage.ps1 -Product "Production Pro" -Version "8.3" -Profile "SystemManager"
-```
-
-Contra un JSON de almacenamiento simulado (pruebas en laboratorio/VM):
-
-```powershell
-.\scripts\validation\Validate-Storage.ps1 -SystemInfoPath .\tests\fixtures\storage\storage-ok.json
-```
-
-## Validacion de seguridad
-
-`scripts/validation/Validate-Security.ps1` es un script independiente (Windows PowerShell 5.1, sin dependencias) que ejecuta los 3 checks de categoria `security` de `manifests/assessment-checks.json`: `check-admin-privileges` (bloqueante), `check-uac-policy` (informativo) y `check-firewall-profile` (informativo). Devuelve al pipeline un objeto con la misma forma que los otros validadores (`Status`, `RealStatus`, `ValidationMode`, `DegradedByMode`, `TestModeApplied`, `Checks`) mas un resumen de seguridad (`Security`) y `SimulatedSource`.
-
-El check de privilegios de administrador falla si la herramienta no se ejecuta elevada. Los otros dos son puramente informativos (estado neutro) reportando EnableLUA y los perfiles de firewall, ya que no hay limites definidos.
-
-El validador aplica el mismo `validationMode` (informational/enforcing) leido de `hardware-requirements.json` y `-TestMode`.
-
-Contra el sistema real:
-
-```powershell
-.\scripts\validation\Validate-Security.ps1
-```
-
-Contra un JSON de seguridad simulada (pruebas en laboratorio/VM):
-
-```powershell
-.\scripts\validation\Validate-Security.ps1 -SystemInfoPath .\tests\fixtures\security\security-admin.json
-```
-
-## Preflight de Backup
-
-`scripts/validation/Preflight-Backup.ps1` es un script independiente (Windows PowerShell 5.1, sin dependencias) que ejecuta los 3 checks de preflight de backup: `check-backup-sources` (comprueba existencia de fuentes), `check-backup-destination` (comprueba unidad de destino y su escritura) y `check-backup-tools` (comprueba variables y herramientas requeridas en SystemManager). Devuelve al pipeline un objeto con la misma forma que los otros validadores (`Status`, `RealStatus`, `ValidationMode`, `DegradedByMode`, `TestModeApplied`, `Checks`) mas resúmenes específicos (`Sources`, `Destination`, `Tools`) y `SimulatedSource`.
-
-El validador aplica el mismo `validationMode` (informational/enforcing) leido de `hardware-requirements.json` y `-TestMode`.
-
-Contra el sistema real:
-
-```powershell
-.\scripts\validation\Preflight-Backup.ps1 -Profile "SystemManager"
-```
-
-Contra un JSON de seguridad simulada (pruebas en laboratorio/VM):
-
-```powershell
-.\scripts\validation\Preflight-Backup.ps1 -SystemInfoPath .\tests\fixtures\backup\backup-sm-ok.json -Profile "SystemManager"
-```
-
-## Pruebas
-
-`tests/Test-ValidateHardware.ps1`, `tests/Test-ValidateNetwork.ps1`, `tests/Test-ValidateOperatingSystem.ps1`, `tests/Test-ValidateStorage.ps1`, `tests/Test-ValidateSecurity.ps1` y `tests/Test-PreflightBackup.ps1` corren cada validador contra sus fixtures (`tests/fixtures/`, `tests/fixtures/network/`, `tests/fixtures/os/`, `tests/fixtures/storage/`, `tests/fixtures/security/` y `tests/fixtures/backup/`), comparan el `Status` esperado vs obtenido y muestran un resumen PASS/FAIL por caso. Los tests de hardware, SO, almacenamiento y seguridad ademas corren un caso `enforcing` (usando sus respectivos manifiestos de prueba enforcing/enforcing hardware) para verificar que los `Fail` reales bloquean cuando no hay degradacion. Salen con codigo distinto de 0 si algun caso falla.
-
-```powershell
+# Pruebas de validadores individuales
 .\tests\Test-ValidateHardware.ps1
 .\tests\Test-ValidateNetwork.ps1
 .\tests\Test-ValidateOperatingSystem.ps1
 .\tests\Test-ValidateStorage.ps1
 .\tests\Test-ValidateSecurity.ps1
-.\tests\Test-PreflightBackup.ps1
+
+# Pruebas de utilidades externas
+.\utilities\backup\Test-PreflightBackup.ps1
 ```
-
-## Notas
-
-- El proyecto trabaja solo en local.
-- Las claves y rutas DFE usadas por la validacion son ejemplos tipicos para Windows.
-- No se incluyen credenciales, tokens ni rutas de clientes.
